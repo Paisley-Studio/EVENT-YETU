@@ -1,29 +1,177 @@
 {
-  "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
-  "functions": [{ "source": "functions", "codebase": "default", "ignore": ["node_modules", ".git", "*.log", ".env.example"] }],
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "*.log",
+        ".env.example"
+      ]
+    }
+  ],
   "hosting": {
     "public": ".",
     "ignore": [
-      "firebase.json", "firestore.rules", "firestore.indexes.json", ".firebaserc", "README.md", "**/.*",
-      "**/node_modules/**", "functions/**", "PARISH-YETU-CMS/**", "VHR/**", "Images/**", "*.pdf"
+      "firebase.json",
+      "firestore.rules",
+      "firestore.indexes.json",
+      ".firebaserc",
+      "README.md",
+      "**/.*",
+      "**/node_modules/**",
+      "functions/**",
+      "PARISH-YETU-CMS/**",
+      "VHR/**",
+      "Images/**",
+      "*.pdf"
     ],
     "cleanUrls": true,
     "rewrites": [
-      { "source": "/api/stkPush", "function": { "functionId": "stkPush", "region": "europe-west1" } },
-      { "source": "/api/mpesaCallback", "function": { "functionId": "mpesaCallback", "region": "europe-west1" } }
+      {
+        "source": "/api/stkPush",
+        "function": {
+          "functionId": "stkPush",
+          "region": "europe-west1"
+        }
+      },
+      {
+        "source": "/api/mpesaCallback",
+        "function": {
+          "functionId": "mpesaCallback",
+          "region": "europe-west1"
+        }
+      }
     ],
     "headers": [
-      { "source": "**/*.@(jpg|jpeg|png|svg|webp)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }] },
-      { "source": "**/*.@(js|css)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }] },
-      { "source": "/sitemap.xml", "headers": [{ "key": "Content-Type", "value": "application/xml; charset=utf-8" }, { "key": "Cache-Control", "value": "public, max-age=3600" }] },
-      { "source": "/site.webmanifest", "headers": [{ "key": "Content-Type", "value": "application/manifest+json" }] },
-      { "source": "/setup/**", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }] },
-      { "source": "/admin/**", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }, { "key": "Cache-Control", "value": "no-cache" }] },
-      { "source": "**", "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
-      ] }
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "frame-ancestors 'self'; object-src 'none'; base-uri 'self'; upgrade-insecure-requests"
+          },
+          {
+            "key": "Cross-Origin-Opener-Policy",
+            "value": "same-origin-allow-popups"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(jpg|jpeg|png|svg|webp)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=604800"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
+          }
+        ]
+      },
+      {
+        "source": "/sitemap.xml",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/xml; charset=utf-8"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
+          }
+        ]
+      },
+      {
+        "source": "/site.webmanifest",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/manifest+json"
+          }
+        ]
+      },
+      {
+        "source": "/setup/**",
+        "headers": [
+          {
+            "key": "X-Robots-Tag",
+            "value": "noindex, nofollow"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "no-store"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+          },
+          {
+            "key": "Cross-Origin-Opener-Policy",
+            "value": "same-origin"
+          }
+        ]
+      },
+      {
+        "source": "/admin/**",
+        "headers": [
+          {
+            "key": "X-Robots-Tag",
+            "value": "noindex, nofollow"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "no-store"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+          },
+          {
+            "key": "Cross-Origin-Opener-Policy",
+            "value": "same-origin"
+          }
+        ]
+      }
     ]
   }
 }

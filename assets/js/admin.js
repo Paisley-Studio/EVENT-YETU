@@ -73,6 +73,9 @@ function csv(rows, filename) {
 }
 
 async function log(label) { try { await addDoc(collection(db, 'activity'), { type: 'admin', label: String(label).slice(0, 200), vid: A.user.email || A.user.uid, at: serverTimestamp() }); } catch { /* ignore */ } }
+// only ever render real base64 images that visitors uploaded (never markup or script URLs)
+const safeImg = (v) => typeof v === 'string' && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(v);
+const isOwner = () => A.data.admins.some((a) => a.id === A.user?.uid && a.role === 'owner');
 const sorted = (col) => [...A.data[col]].sort((a, b) => ms(b.at) - ms(a.at));
 const coupleNames = () => `${A.settings.couple.partnerA} & ${A.settings.couple.partnerB}`;
 function tpl(s, vars) { return String(s || '').replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? ''); }
@@ -111,6 +114,12 @@ $('#resetPw').addEventListener('click', async () => {
 document.addEventListener('click', (e) => { if (e.target.closest('[data-logout]')) signOut(auth).then(() => location.reload()); });
 $('#deniedClaim').addEventListener('click', async () => { try { await claimOwner(A.user); location.reload(); } catch (err) { toast('Could not claim: ' + err.message, true); } });
 
+(async () => {
+  try {
+    const [lock, setup] = await Promise.all([getDoc(doc(db, 'config', 'lock')), getDoc(doc(db, 'config', 'setup'))]);
+    if (lock.exists() || setup.data()?.closed) { $('a[href="../setup/"]')?.remove(); $('#claimForm')?.remove(); $('#claimToggle')?.remove(); }
+  } catch { /* offline: leave as is, rules still protect */ }
+})();
 onAuthStateChanged(auth, async (user) => {
   if (location.hash === '#demo' && ['localhost', '127.0.0.1'].includes(location.hostname)) return;
   A.user = user;
@@ -138,6 +147,7 @@ async function startApp() {
     const q = ['visits', 'activity', 'giftReveals'].includes(c) ? query(collection(db, c), orderBy('at', 'desc'), limit(c === 'visits' ? 5000 : 500)) : collection(db, c);
     A.unsubs.push(onSnapshot(q, (s) => { A.data[c] = s.docs.map((d) => ({ id: d.id, ...d.data() })); onData(c); }, (err) => console.warn(c, err.message)));
   }
+  A.unsubs.push(onSnapshot(doc(db, 'config', 'setup'), (s) => { A.setupState = s.data() || { closed: false }; if (A.view === 'content' && A.sub.content === 'admins') render(true); }, () => {}));
   showOnly('app');
   render();
 }
@@ -511,7 +521,7 @@ VIEWS.gifts = () => {
       <select data-f="gStatus"><option value="">All statuses</option>${opts(STATUS.gift, sf)}</select><span class="sp"></span>
       <span class="muted small">Only <b>RECEIVED</b> gifts count on the public counter.</span><button class="b b--ghost" data-act="exportGifts">Export CSV</button><button class="b b--primary" data-act="editOffer">+ Add gift</button></div>
     ${table(['Date', 'Type', 'Gift', 'From', 'Arrangement', 'Message', 'Status', ''], rows.map((g) => `<tr><td>${fmtDate(g.at)}</td><td>${esc(GIFT_TYPE[g.type] || g.type)}</td>
-      <td>${g.photo ? `<img class="thumb" src="${esc(g.photo)}" alt="" data-act="viewImg" data-src="${esc(g.photo)}" style="cursor:zoom-in;margin-bottom:.3rem" />` : ''}<b>${esc(g.giftName || '-')}</b>${g.description && g.description !== g.giftName ? `<div class="clip muted small">${esc(g.description)}</div>` : ''}</td>
+      <td>${safeImg(g.photo) ? `<img class="thumb" src="${esc(g.photo)}" alt="" data-act="viewImg" data-src="${esc(g.photo)}" style="cursor:zoom-in;margin-bottom:.3rem" />` : ''}<b>${esc(g.giftName || '-')}</b>${g.description && g.description !== g.giftName ? `<div class="clip muted small">${esc(g.description)}</div>` : ''}</td>
       <td>${esc(g.name || 'Anonymous')}<br><span class="mono small">${g.phone ? `<a href="tel:${telPhone(g.phone)}">${esc(g.phone)}</a>` : ''}</span></td>
       <td>${esc(g.arrangement || '')}${g.location ? `<br><small>${esc(g.location)}</small>` : ''}${g.date ? `<br><small>Suggested: ${esc(g.date)}</small>` : ''}</td>
       <td><div class="clip">${esc(g.message || '')}</div></td>
@@ -683,19 +693,19 @@ VIEWS.guestbook = () => {
   const rows = sorted('guestbook').filter((g) => (!sf || g.status === sf) && match({ ...g, signature: '' }, q));
   return {
     html: `<div class="toolbar"><input type="search" placeholder="Search names…" data-f="gbQ" value="${esc(q)}" /><select data-f="gbStatus"><option value="">All</option>${opts(STATUS.moderation, sf)}</select><span class="muted small">${rows.length} entries</span><span class="sp"></span><button class="b b--ghost" data-act="exportGb">Export CSV</button><button class="b b--ghost" data-act="printGb">Print book</button></div>
-    <div class="tiles">${rows.map((g) => `<div class="card gb">${g.signature ? `<img class="sig" src="${esc(g.signature)}" alt="Signature" />` : ''}<b>${esc(g.name)}</b><p>${esc(g.message || '')}</p>
+    <div class="tiles">${rows.map((g) => `<div class="card gb">${safeImg(g.signature) ? `<img class="sig" src="${esc(g.signature)}" alt="Signature" />` : ''}<b>${esc(g.name)}</b><p>${esc(g.message || '')}</p>
       <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">${pill(g.status)} ${g.public ? '<span class="st st--info">public OK</span>' : '<span class="st st--mute">private</span>'}</div>
       <small class="muted">${fmtDate(g.at)}</small>
       <div class="acts" style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.6rem">${g.status !== 'APPROVED' ? `<button class="b b--ok b--sm" data-act="gbSet" data-s="APPROVED" data-id="${g.id}">Approve</button>` : `<button class="b b--ghost b--sm" data-act="gbSet" data-s="PENDING" data-id="${g.id}">Hide</button>`}${g.status !== 'REJECTED' ? `<button class="b b--bad b--sm" data-act="gbSet" data-s="REJECTED" data-id="${g.id}">Reject</button>` : ''}${g.signature ? `<button class="b b--ghost b--sm" data-act="dlSig" data-id="${g.id}">PNG</button>` : ''}<button class="b b--ghost b--sm" data-act="delDoc" data-col="guestbook" data-id="${g.id}">Delete</button></div></div>`).join('') || '<div class="empty">No guestbook entries yet.</div>'}</div>`,
   };
 };
 ACT.gbSet = ({ id, s }) => upd('guestbook', id, { status: s }, `Guestbook entry → ${s}`);
-ACT.dlSig = ({ id }) => { const g = find('guestbook', id); const a = document.createElement('a'); a.href = g.signature; a.download = `signature-${(g.name || 'guest').replace(/\W+/g, '-')}.png`; a.click(); };
+ACT.dlSig = ({ id }) => { const g = find('guestbook', id); if (!safeImg(g.signature)) return toast('This signature is not a valid image', true); const a = document.createElement('a'); a.href = g.signature; a.download = `signature-${(g.name || 'guest').replace(/\W+/g, '-')}.png`; a.click(); };
 ACT.exportGb = () => csv(sorted('guestbook').map((g) => ({ date: toDate(g.at)?.toISOString() || '', name: g.name, message: g.message, public_permission: !!g.public, has_signature: !!g.signature, status: g.status })), `tnc-guestbook-${today()}.csv`);
 ACT.printGb = () => {
   const w = window.open('', '_blank'); if (!w) return toast('Allow pop-ups to print', true);
   const rows = sorted('guestbook').filter((g) => g.status !== 'REJECTED');
-  w.document.write(`<html><head><title>Guestbook · The Next Chapter</title><link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600&family=Great+Vibes&display=swap" rel="stylesheet"><style>body{font-family:Quicksand,sans-serif;color:#3A0010;padding:30px}h1{font-family:'Great Vibes';font-size:54px;text-align:center;margin:0 0 20px;color:#6D011A}.g{display:grid;grid-template-columns:1fr 1fr;gap:18px}.e{border:1px solid #eadfd0;border-radius:10px;padding:14px;break-inside:avoid}.e img{height:70px;max-width:100%;object-fit:contain}.e b{display:block}.e p{margin:.3rem 0 0;font-size:13px}</style></head><body><h1>Our Guestbook</h1><div class="g">${rows.map((g) => `<div class="e">${g.signature ? `<img src="${g.signature}">` : ''}<b>${esc(g.name)}</b><p>${esc(g.message || '')}</p></div>`).join('')}</div><script>setTimeout(()=>print(),800)<\/script></body></html>`);
+  w.document.write(`<html><head><title>Guestbook · The Next Chapter</title><link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600&family=Great+Vibes&display=swap" rel="stylesheet"><style>body{font-family:Quicksand,sans-serif;color:#3A0010;padding:30px}h1{font-family:'Great Vibes';font-size:54px;text-align:center;margin:0 0 20px;color:#6D011A}.g{display:grid;grid-template-columns:1fr 1fr;gap:18px}.e{border:1px solid #eadfd0;border-radius:10px;padding:14px;break-inside:avoid}.e img{height:70px;max-width:100%;object-fit:contain}.e b{display:block}.e p{margin:.3rem 0 0;font-size:13px}</style></head><body><h1>Our Guestbook</h1><div class="g">${rows.map((g) => `<div class="e">${safeImg(g.signature) ? `<img src="${esc(g.signature)}">` : ''}<b>${esc(g.name)}</b><p>${esc(g.message || '')}</p></div>`).join('')}</div><script>setTimeout(()=>print(),800)<\/script></body></html>`);
   w.document.close();
 };
 
@@ -811,7 +821,7 @@ function sigPad(c) {
 
 // ---------------- CONTENT & SETTINGS ----------------
 VIEWS.content = () => {
-  const st = subtabs('content', [['story', 'Couple & story'], ['gallery', 'Gallery'], ['occasion', 'Occasion'], ['finance', 'Finance & M-Pesa'], ['texts', 'Website text'], ['messages', 'Reminders & sharing'], ['brand', 'Brand'], ['admins', 'Admins']]);
+  const st = subtabs('content', [['story', 'Couple & story'], ['gallery', 'Gallery'], ['occasion', 'Occasion'], ['finance', 'Finance & M-Pesa'], ['texts', 'Website text'], ['messages', 'Reminders & sharing'], ['brand', 'Brand'], ['admins', 'Admins & security']]);
   const S = A.settings;
   const inp = (path, label, attrs = '') => `<label class="f"><span>${label}</span><input data-path="${path}" value="${esc(getPath(S, path) ?? '')}" ${attrs} /></label>`;
   const area = (path, label, rows = 3) => `<label class="f"><span>${label}</span><textarea data-path="${path}" rows="${rows}">${esc(getPath(S, path) ?? '')}</textarea></label>`;
@@ -846,9 +856,20 @@ VIEWS.content = () => {
     html = `<div class="card"><div class="row">${inp('brand.title', 'Site title')}${inp('brand.monogram', 'Coin monogram (1–3 letters)', 'maxlength="3"')}</div>${inp('brand.tagline', 'Tagline (shown under the loader title)')}
       <p class="muted small">The coin that rolls in on load is engraved with this monogram.</p>${save}</div>`;
   } else if (st.cur === 'admins') {
-    html = `<div class="card"><h3>Administrators</h3><p class="muted small">To add someone: they create an account on this admin page (it will say "Not authorised" and show their ID). Paste that ID here.</p>
-      ${table(['Email / label', 'Role', 'UID', ''], A.data.admins.map((a) => `<tr><td>${esc(a.email || '-')}</td><td>${esc(a.role || 'admin')}</td><td class="mono small">${esc(a.id)}</td><td>${a.id !== A.user.uid && a.role !== 'owner' ? `<button class="b b--bad b--sm" data-act="rmAdmin" data-id="${a.id}">Remove</button>` : '<span class="muted small">you / owner</span>'}</td></tr>`))}
-      <div class="row" style="margin-top:1rem"><label class="f"><span>User ID</span><input id="newAdminUid" class="mono" /></label><label class="f"><span>Email / label</span><input id="newAdminEmail" /></label></div><button class="b b--primary" data-act="addAdmin">Add admin</button></div>`;
+    const owner = isOwner(), closed = !!A.setupState?.closed;
+    html = `<div class="card" style="margin-bottom:16px"><div class="card-h"><div><h3>Setup page</h3>
+        <p class="muted small">The <span class="mono">/setup</span> page is only needed once, to create the owner account. Close it so nobody can use it.
+        Even when it is open, nobody can make themselves an admin once an owner exists.</p></div>
+        <span class="st st--${closed ? 'ok' : 'warn'}">${closed ? 'Closed' : 'Open'}</span></div>
+      ${owner ? `<button class="b ${closed ? 'b--ghost' : 'b--primary'}" data-act="toggleSetup" data-close="${closed ? '' : '1'}">${closed ? 'Reopen setup page' : 'Close setup page'}</button>` : '<p class="muted small">Only the owner can open or close the setup page.</p>'}</div>
+    <div class="card"><h3>Administrators</h3><p class="muted small">${owner ? 'To add someone, create their login in Firebase Console → Authentication → Add user, ask them to sign in here once (it shows "Not authorised" and their user ID), then paste that ID below. Only the owner can add or remove admins.' : 'Only the owner can add or remove admins.'}</p>
+      ${table(['Email / label', 'Role', 'UID', ''], A.data.admins.map((a) => `<tr><td>${esc(a.email || '-')}</td><td>${esc(a.role || 'admin')}</td><td class="mono small">${esc(a.id)}</td><td>${owner && a.id !== A.user.uid && a.role !== 'owner' ? `<button class="b b--bad b--sm" data-act="rmAdmin" data-id="${esc(a.id)}">Remove</button>` : `<span class="muted small">${a.id === A.user.uid ? 'you' : a.role === 'owner' ? 'owner' : ''}</span>`}</td></tr>`))}
+      ${owner ? `<div class="row" style="margin-top:1rem"><label class="f"><span>User ID</span><input id="newAdminUid" class="mono" /></label><label class="f"><span>Email / label</span><input id="newAdminEmail" maxlength="80" /></label></div><button class="b b--primary" data-act="addAdmin">Add admin</button>` : ''}</div>
+    <div class="card" style="margin-top:16px"><h3>Security checklist</h3><ul class="muted small" style="margin:.4rem 0 0;padding-left:1.1rem;display:grid;gap:.35rem">
+      <li>Firebase Console → Authentication → Settings → <b>User actions</b>: untick <b>Enable create (sign-up)</b>, so strangers can't create accounts.</li>
+      <li>Authentication → Settings: turn on <b>Email enumeration protection</b>.</li>
+      <li>Use a long, unique password for every admin and remove admins who no longer need access.</li>
+      <li>Check the <b>Activity log</b> regularly for actions you don't recognise.</li></ul></div>`;
   }
   return {
     html: st.html + html,
@@ -892,11 +913,19 @@ ACT.saveContent = async () => {
   if (data.finance?.target != null) syncStats(false);
   toast('Saved. The website is updated ✓'); log('Website content updated');
 };
+ACT.toggleSetup = async ({ close }) => {
+  const closing = !!close;
+  if (!(await confirmDlg(closing ? 'Close the setup page? Nobody will be able to use it until you reopen it.' : 'Reopen the setup page?', closing ? 'Close setup' : 'Reopen', !closing))) return;
+  await setDoc(doc(db, 'config', 'setup'), { closed: closing, by: A.user.uid, at: serverTimestamp() });
+  A.setupState = { closed: closing }; render(true);
+  toast(closing ? 'Setup page closed ✓' : 'Setup page reopened'); log(closing ? 'Setup page closed' : 'Setup page reopened');
+};
 ACT.addAdmin = async () => {
+  if (!isOwner()) return toast('Only the owner can add admins', true);
   const uid = $('#newAdminUid').value.trim(); if (!/^[A-Za-z0-9]{20,40}$/.test(uid)) return toast('That does not look like a valid user ID', true);
   await setDoc(doc(db, 'admins', uid), { email: $('#newAdminEmail').value.trim(), role: 'admin', addedBy: A.user.email, at: serverTimestamp() }); toast('Admin added'); log('Admin added');
 };
-ACT.rmAdmin = async ({ id }) => { if (await confirmDlg('Remove this admin?', 'Remove', true)) { await deleteDoc(doc(db, 'admins', id)); toast('Admin removed'); log('Admin removed'); } };
+ACT.rmAdmin = async ({ id }) => { if (!isOwner()) return toast('Only the owner can remove admins', true); if (await confirmDlg('Remove this admin?', 'Remove', true)) { await deleteDoc(doc(db, 'admins', id)); toast('Admin removed'); log('Admin removed'); } };
 
 // ---------------- REPORTS ----------------
 VIEWS.reports = () => {

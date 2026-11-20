@@ -246,6 +246,14 @@
       btn.disabled = false; btn.textContent = 'Save and finish';
     });
 
+    // ---------- closed by the owner? then show nothing but a notice ----------
+    let closed = false;
+    try { closed = !!(await withTimeout(getDoc(doc(db, 'config', 'setup')), 7000, 'database')).data()?.closed; } catch { /* rules still protect */ }
+    if (closed) {
+      await auth.signOut().catch(() => {});
+      document.querySelector('main').innerHTML = '<section class="card" style="text-align:center"><h2>Setup is closed</h2><p class="lead">This page has been closed by the site owner.</p><a class="b b--primary" href="../admin/">Go to admin sign in</a></section>';
+      throw new Error('setup closed');
+    }
     // ---------- resume ----------
     step(1);
     onAuthStateChanged(auth, async (u) => {

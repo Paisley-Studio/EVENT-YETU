@@ -22,6 +22,7 @@ const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const { setGlobalOptions, logger } = require('firebase-functions/v2');
 const admin = require('firebase-admin');
+const crypto = require('crypto');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -39,6 +40,9 @@ const MPESA_TYPE = defineString('MPESA_TYPE', { default: 'paybill' });
 const PUBLIC_BASE_URL = defineString('PUBLIC_BASE_URL', { default: '' });
 const AT_USERNAME = defineString('AT_USERNAME', { default: '' });
 const AT_SENDER_ID = defineString('AT_SENDER_ID', { default: '' });
+// Only our own site may call the payment API from a browser.
+const ALLOWED_ORIGINS = ['https://event-yetu.online', 'https://www.event-yetu.online', 'https://mesh-9b2f3.web.app', 'https://mesh-9b2f3.firebaseapp.com'];
+const safeEqual = (a, b) => { const x = Buffer.from(String(a || '')), y = Buffer.from(String(b || '')); return x.length === y.length && crypto.timingSafeEqual(x, y); };
 const MPESA_SECRETS = [MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_PASSKEY, MPESA_CALLBACK_TOKEN];
 
 const darajaBase = () => (MPESA_ENV.value() === 'production' ? 'https://api.safaricom.co.ke' : 'https://sandbox.safaricom.co.ke');
@@ -56,10 +60,13 @@ function password(stamp) { return Buffer.from(`${MPESA_SHORTCODE.value()}${MPESA
 // ---------------------------------------------------------------------------
 // STK PUSH
 // ---------------------------------------------------------------------------
-exports.stkPush = onRequest({ secrets: MPESA_SECRETS, cors: true }, async (req, res) => {
+exports.stkPush = onRequest({ secrets: MPESA_SECRETS, cors: ALLOWED_ORIGINS }, async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const origin = req.headers.origin || '';
+  if (origin && !ALLOWED_ORIGINS.includes(origin)) return res.status(403).json({ error: 'Forbidden' });
+  if (!String(req.headers['content-type'] || '').includes('application/json')) return res.status(415).json({ error: 'Unsupported request' });
   try {
-    const { amount: rawAmount, phone: rawPhone, name = '', anonymous = false, vid = '', ref = '' } = req.body || {};
+    const { amount: rawAmount, phone: rawPhone, name = '', anonymous = false, vid = '', ref = '' } = (req.body && typeof req.body === 'object') ? req.body : {};
     const amount = Math.round(Number(rawAmount));
     const phone = normalizePhone(rawPhone);
     if (!Number.isFinite(amount) || amount < 10 || amount > 250000) return res.status(400).json({ error: 'Please enter an amount between KES 10 and 250,000.' });
@@ -82,10 +89,22 @@ exports.stkPush = onRequest({ secrets: MPESA_SECRETS, cors: true }, async (req, 
     });
     if (!ok) return res.status(429).json({ error: 'Too many attempts. Please try again in a few minutes.' });
 
+    // caps that can't be dodged by faking IP headers: max 5 prompts per phone per day, max 30 per minute site-wide
+    const day = admin.firestore.Timestamp.fromMillis(Date.now() - 24 * 3600 * 1000);
+    const perPhone = await db.collection('contributions').where('phone', '==', phone).where('at', '>', day).limit(5).get();
+    if (perPhone.size >= 5) return res.status(429).json({ error: 'This number has had several payment requests today. Please try again tomorrow or pay via Paybill.' });
+    const globalOk = await db.runTransaction(async (t) => {
+      const g = db.doc('ratelimits/_global'); const s = await t.get(g); const now = Date.now();
+      const hits = ((s.exists && s.data().hits) || []).filter((x) => now - x < 60 * 1000);
+      if (hits.length >= 30) return false;
+      t.set(g, { hits: [...hits, now] }); return true;
+    });
+    if (!globalOk) return res.status(429).json({ error: 'Payments are busy right now. Please try again in a minute.' });
+
     const docRef = db.collection('contributions').doc();
     const cleanRef = String(ref).replace(/[^A-Z0-9-]/gi, '').slice(0, 20) || `TNC-${docRef.id.slice(0, 6).toUpperCase()}`;
     await docRef.set({
-      amount, phone, name: String(name).slice(0, 80), anonymous: !!anonymous, vid: String(vid).slice(0, 30), ref: cleanRef,
+      amount, phone, name: String(name).replace(/[<>]/g, '').slice(0, 80), anonymous: anonymous === true, vid: String(vid).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 30), ref: cleanRef,
       status: 'PENDING', method: 'STK', at: FieldValue.serverTimestamp(),
     });
     await db.doc(`contributionStatus/${docRef.id}`).set({ status: 'PENDING', amount, ref: cleanRef, at: FieldValue.serverTimestamp() });
@@ -156,7 +175,7 @@ exports.mpesaCallback = onRequest({ secrets: [MPESA_CALLBACK_TOKEN] }, async (re
   // Always ACK Safaricom so it doesn't retry forever; we never trust the body without matching our own pending record.
   const ack = () => res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
   try {
-    if (req.query.token !== MPESA_CALLBACK_TOKEN.value()) { logger.warn('Callback with bad token'); return res.status(403).json({ ResultCode: 1, ResultDesc: 'Forbidden' }); }
+    if (req.method !== 'POST' || !safeEqual(req.query.token, MPESA_CALLBACK_TOKEN.value())) { logger.warn('Callback with bad token'); return res.status(403).json({ ResultCode: 1, ResultDesc: 'Forbidden' }); }
     const cb = req.body && req.body.Body && req.body.Body.stkCallback;
     if (!cb || !cb.CheckoutRequestID) return ack();
     const q = await db.collection('contributions').where('checkoutRequestId', '==', cb.CheckoutRequestID).limit(1).get();

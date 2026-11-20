@@ -1,0 +1,8 @@
+# The Next Chapter: Mesh & Reachel's Ruracio
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /setup/
+Disallow: /api/
+
+Sitemap: https://event-yetu.online/sitemap.xml

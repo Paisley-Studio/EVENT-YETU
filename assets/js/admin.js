@@ -331,12 +331,12 @@ VIEWS.finance = () => {
       html: `${st.html}<div class="toolbar"><input type="search" placeholder="Search name, ref, receipt…" data-f="finQ" value="${esc(q)}" />
         <select data-f="txStatus"><option value="">All statuses</option>${opts(STATUS.contribution, sf)}</select>
         <span class="muted small">${rows.length} shown · ${money(sum)} confirmed</span><span class="sp"></span>
-        <button class="b b--ghost" data-act="exportTx">Export CSV</button><button class="b b--primary" data-act="recordPay">+ Record external payment</button></div>
+        <button class="b b--ghost" data-act="goto" data-v="numbers">Edit public contributor count</button><button class="b b--ghost" data-act="exportTx">Export CSV</button><button class="b b--primary" data-act="recordPay">+ Add contribution</button></div>
         ${table(['Date', 'Reference', 'Contributor', 'Phone', 'Amount', 'Method', 'M-Pesa receipt', 'Status', ''], rows.map((c) => `<tr>
           <td>${fmtDate(c.at, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td><td class="mono">${esc(c.ref)}</td>
           <td>${esc(nameOf(c))}${c.anonymous && c.name ? `<br><small class="muted">(${esc(c.name)})</small>` : ''}</td><td class="mono">${esc(maskPhone(c.phone))}</td>
           <td class="num">${money(c.amount)}</td><td>${esc(c.method || 'STK')}</td><td class="mono">${esc(c.mpesaRef || '-')}${c.resultDesc && c.status === 'FAILED' ? `<br><small class="muted">${esc(c.resultDesc)}</small>` : ''}</td><td>${pill(c.status)}</td>
-          <td><div class="acts">${c.status === 'PENDING' ? `<button class="b b--ok b--sm" data-act="verifyTx" data-id="${c.id}">Verify</button><button class="b b--bad b--sm" data-act="failTx" data-id="${c.id}">Mark failed</button>` : ''}
+          <td><div class="acts"><button class="b b--ghost b--sm" data-act="editTx" data-id="${c.id}">Edit</button>${c.status === 'PENDING' ? `<button class="b b--ok b--sm" data-act="verifyTx" data-id="${c.id}">Verify</button><button class="b b--bad b--sm" data-act="failTx" data-id="${c.id}">Mark failed</button>` : ''}
           ${c.status === 'SUCCESS' ? `<button class="b b--ghost b--sm" data-act="ackTx" data-id="${c.id}">Acknowledgement</button><button class="b b--ghost b--sm" data-act="tyFor" data-cat="financial" data-name="${esc(nameOf(c))}">Thank-you</button>` : ''}</div></td></tr>`), 'No transactions yet.')}`,
     };
   }
@@ -346,12 +346,12 @@ VIEWS.finance = () => {
     html: `${st.html}<div class="toolbar"><input type="search" placeholder="Search…" data-f="finQ" value="${esc(q)}" />
       <select data-f="plStatus"><option value="">All statuses</option>${opts(STATUS.pledge, sf)}</select>
       <span class="muted small">Outstanding: <b>${money(A.data.pledges.filter((p) => ['PENDING', 'REMINDER_SENT'].includes(p.status)).reduce((s, p) => s + (+p.amount || 0), 0))}</b> (promised, not received)</span><span class="sp"></span>
-      <button class="b b--ghost" data-act="exportPl">Export CSV</button></div>
+      <button class="b b--ghost" data-act="exportPl">Export CSV</button><button class="b b--primary" data-act="editPledge">+ Add pledge</button></div>
       ${table(['Pledged on', 'Ref', 'Name', 'Phone', 'Amount', 'Remind on', 'Reminder', 'Status', ''], rows.map((p) => {
         const rem = find('reminders', p.reminderId);
         return `<tr><td>${fmtDate(p.at)}</td><td class="mono">${esc(p.ref)}</td><td>${esc(p.name || 'Anonymous')}</td><td class="mono">${esc(maskPhone(p.phone))}</td>
         <td class="num">${money(p.amount)}</td><td>${esc(p.date || '-')}</td><td>${pill(rem?.status || p.reminderStatus || 'NONE')}</td><td>${pill(p.status)}</td>
-        <td><div class="acts">${['PENDING', 'REMINDER_SENT'].includes(p.status) ? `<button class="b b--ok b--sm" data-act="plPaid" data-id="${p.id}">Record as paid</button>${p.phone ? `<button class="b b--ghost b--sm" data-act="waRem" data-id="${p.reminderId || ''}" data-pledge="${p.id}">WhatsApp</button>` : ''}<button class="b b--ghost b--sm" data-act="plCancel" data-id="${p.id}">Cancel</button>` : ''}</div></td></tr>`;
+        <td><div class="acts"><button class="b b--ghost b--sm" data-act="editPledge" data-id="${p.id}">Edit</button>${['PENDING', 'REMINDER_SENT'].includes(p.status) ? `<button class="b b--ok b--sm" data-act="plPaid" data-id="${p.id}">Record as paid</button>${p.phone ? `<button class="b b--ghost b--sm" data-act="waRem" data-id="${p.reminderId || ''}" data-pledge="${p.id}">WhatsApp</button>` : ''}<button class="b b--ghost b--sm" data-act="plCancel" data-id="${p.id}">Cancel</button>` : ''}</div></td></tr>`;
       }), 'No pledges yet.')}`,
   };
 };
@@ -404,6 +404,66 @@ ACT.recordPay = ({ pledge } = {}) => {
 ACT.plPaid = ({ id }) => ACT.recordPay({ pledge: id });
 ACT.plCancel = async ({ id }) => { if (!(await confirmDlg('Cancel this pledge? It will no longer count as outstanding.', 'Cancel pledge', true))) return; const p = find('pledges', id); await upd('pledges', id, { status: 'CANCELLED' }, 'Pledge cancelled'); if (p.reminderId && find('reminders', p.reminderId)?.status === 'SCHEDULED') await upd('reminders', p.reminderId, { status: 'CANCELLED' }); };
 ACT.exportTx = () => csv(sorted('contributions').map((c) => ({ date: toDate(c.at)?.toISOString() || '', ref: c.ref, name: c.name, anonymous: !!c.anonymous, phone: c.phone, amount: c.amount, method: c.method || 'STK', mpesa_receipt: c.mpesaRef || '', status: c.status, confirmed_at: toDate(c.confirmedAt)?.toISOString() || '' })), `tnc-transactions-${today()}.csv`);
+ACT.editTx = ({ id }) => {
+  const c = find('contributions', id);
+  const b = dlg(`<h3>Edit contribution</h3><p class="muted">Ref <span class="mono">${esc(c.ref || '-')}</span>. Changes apply to the records and the public totals.</p>
+    <div class="row"><label class="f"><span>Name</span><input id="eName" value="${esc(c.name || '')}" maxlength="80" /></label><label class="f"><span>Phone</span><input id="ePhone" value="${esc(c.phone || '')}" /></label></div>
+    <div class="row"><label class="f"><span>Amount (KES)</span><input id="eAmt" type="number" min="1" value="${+c.amount || 0}" /></label><label class="f"><span>Method</span><select id="eMethod">${opts(['STK', 'MANUAL', 'MPESA_DIRECT', 'CASH', 'BANK', 'OTHER'], c.method || 'STK')}</select></label></div>
+    <div class="row"><label class="f"><span>Receipt / transaction code</span><input id="eRef" class="mono" value="${esc(c.mpesaRef || '')}" /></label><label class="f"><span>Status</span><select id="eStatus">${opts(STATUS.contribution, c.status)}</select></label></div>
+    <label class="tog"><input type="checkbox" id="eAnon" ${c.anonymous ? 'checked' : ''} /> Show as anonymous</label>
+    <div class="toolbar"><button class="b b--bad" id="eDel">Delete</button><span class="sp"></span><button class="b b--ghost" data-x>Cancel</button><button class="b b--primary" id="eOk">Save changes</button></div>`);
+  $('#eDel', b).onclick = async () => {
+    if (!(await confirmDlg('Delete this contribution permanently?', 'Delete', true))) return;
+    await deleteDoc(doc(db, 'contributions', id)); deleteDoc(doc(db, 'contributionStatus', id)).catch(() => {});
+    toast('Deleted'); log(`Contribution ${c.ref || id} deleted`);
+  };
+  $('#eOk', b).onclick = async () => {
+    const amt = Math.round(+$('#eAmt').value); if (!amt || amt < 1) return toast('Enter a valid amount', true);
+    const code = $('#eRef').value.trim().toUpperCase(), status = $('#eStatus').value;
+    if (code && A.data.contributions.some((x) => x.id !== id && (x.mpesaRef || '').toUpperCase() === code)) return toast('Duplicate: this receipt is already recorded on another transaction', true);
+    const data = { name: $('#eName').value.trim(), phone: normalizePhone($('#ePhone').value) || $('#ePhone').value.trim(), amount: amt, method: $('#eMethod').value, mpesaRef: code, anonymous: $('#eAnon').checked, status };
+    if (status === 'SUCCESS' && c.status !== 'SUCCESS') Object.assign(data, { confirmedAt: serverTimestamp(), verifiedBy: A.user.email });
+    await upd('contributions', id, data, `Contribution ${c.ref || ''} edited`);
+    await setDoc(doc(db, 'contributionStatus', id), { status, amount: amt, mpesaRef: code, ref: c.ref || '', at: serverTimestamp() }, { merge: true });
+    closeDlg();
+  };
+};
+ACT.editPledge = ({ id } = {}) => {
+  const p = id ? find('pledges', id) : { name: '', phone: '', amount: '', date: '', status: 'PENDING' };
+  const b = dlg(`<h3>${id ? 'Edit pledge' : 'Add pledge'}</h3><p class="muted">${id ? `Ref <span class="mono">${esc(p.ref || '-')}</span>.` : 'For promises made in person, by phone or on WhatsApp.'} Pledges are promises and never count as money received.</p>
+    <div class="row"><label class="f"><span>Name</span><input id="pName" value="${esc(p.name || '')}" maxlength="80" placeholder="Who pledged?" /></label><label class="f"><span>Phone <em>(optional)</em></span><input id="pPhone" value="${esc(p.phone || '')}" placeholder="07XX XXX XXX" /></label></div>
+    <div class="row"><label class="f"><span>Amount (KES)</span><input id="pAmt" type="number" min="1" value="${p.amount || ''}" /></label><label class="f"><span>Expected / remind on</span><input id="pDate" type="date" value="${esc(p.date || '')}" /></label></div>
+    ${id ? `<label class="f"><span>Status</span><select id="pStatus">${opts(STATUS.pledge, p.status)}</select></label>` : '<label class="tog"><input type="checkbox" id="pRem" /> Schedule a reminder on that date (needs a phone number and their consent)</label>'}
+    <div class="toolbar">${id ? '<button class="b b--bad" id="pDel">Delete</button>' : ''}<span class="sp"></span><button class="b b--ghost" data-x>Cancel</button><button class="b b--primary" id="pOk">${id ? 'Save changes' : 'Add pledge'}</button></div>`);
+  if (id) $('#pDel', b).onclick = async () => {
+    if (!(await confirmDlg('Delete this pledge permanently?', 'Delete', true))) return;
+    await deleteDoc(doc(db, 'pledges', id));
+    if (p.reminderId && find('reminders', p.reminderId)?.status === 'SCHEDULED') await upd('reminders', p.reminderId, { status: 'CANCELLED' });
+    toast('Pledge deleted'); log('Pledge deleted');
+  };
+  $('#pOk', b).onclick = async () => {
+    const amt = Math.round(+$('#pAmt').value); if (!amt || amt < 1) return toast('Enter the pledged amount', true);
+    const name = $('#pName').value.trim(); if (!name) return toast('Enter who pledged', true);
+    const phone = normalizePhone($('#pPhone').value) || '', date = $('#pDate').value || '';
+    if ($('#pPhone').value.trim() && !phone) return toast('That phone number looks invalid', true);
+    if (id) {
+      const status = $('#pStatus').value, rem = p.reminderId && find('reminders', p.reminderId);
+      await upd('pledges', id, { name, phone, amount: amt, date, status }, `Pledge ${p.ref || ''} edited`);
+      if (rem) await upd('reminders', rem.id, { name, phone, date, ...(['PAID', 'CANCELLED'].includes(status) && rem.status === 'SCHEDULED' ? { status: 'CANCELLED' } : {}) });
+    } else {
+      const wantRem = $('#pRem').checked;
+      if (wantRem && (!phone || !date)) return toast('A reminder needs a phone number and a date', true);
+      const ref = makeRef('PL');
+      const pr = await addDoc(collection(db, 'pledges'), { amount: amt, name, phone, date, consent: wantRem, ref, vid: 'admin', status: 'PENDING', reminderStatus: wantRem ? 'SCHEDULED' : 'NONE', reminderId: '', addedBy: A.user.email, at: serverTimestamp() });
+      if (wantRem) {
+        const r = await addDoc(collection(db, 'reminders'), { kind: 'pledge', refId: pr.id, name, phone, date, consent: true, status: 'SCHEDULED', vid: 'admin', ref, at: serverTimestamp() });
+        await updateDoc(doc(db, 'pledges', pr.id), { reminderId: r.id });
+      }
+      toast('Pledge added ✓'); log(`Pledge added: ${money(amt)} from ${name}`);
+    }
+    closeDlg();
+  };
+};
 ACT.exportPl = () => csv(sorted('pledges').map((p) => ({ date: toDate(p.at)?.toISOString() || '', ref: p.ref, name: p.name, phone: p.phone, amount: p.amount, remind_on: p.date, reminder_status: find('reminders', p.reminderId)?.status || p.reminderStatus, status: p.status })), `tnc-pledges-${today()}.csv`);
 
 // ---------------- GIFTS ----------------
@@ -449,17 +509,48 @@ VIEWS.gifts = () => {
     html: `${st.html}<div class="toolbar"><input type="search" placeholder="Search gifts, names…" data-f="gQ" value="${esc(q)}" />
       <select data-f="gType"><option value="">All types</option>${opts(Object.entries(GIFT_TYPE), tf)}</select>
       <select data-f="gStatus"><option value="">All statuses</option>${opts(STATUS.gift, sf)}</select><span class="sp"></span>
-      <span class="muted small">Only <b>RECEIVED</b> gifts count on the public counter.</span><button class="b b--ghost" data-act="exportGifts">Export CSV</button></div>
+      <span class="muted small">Only <b>RECEIVED</b> gifts count on the public counter.</span><button class="b b--ghost" data-act="exportGifts">Export CSV</button><button class="b b--primary" data-act="editOffer">+ Add gift</button></div>
     ${table(['Date', 'Type', 'Gift', 'From', 'Arrangement', 'Message', 'Status', ''], rows.map((g) => `<tr><td>${fmtDate(g.at)}</td><td>${esc(GIFT_TYPE[g.type] || g.type)}</td>
       <td>${g.photo ? `<img class="thumb" src="${esc(g.photo)}" alt="" data-act="viewImg" data-src="${esc(g.photo)}" style="cursor:zoom-in;margin-bottom:.3rem" />` : ''}<b>${esc(g.giftName || '-')}</b>${g.description && g.description !== g.giftName ? `<div class="clip muted small">${esc(g.description)}</div>` : ''}</td>
       <td>${esc(g.name || 'Anonymous')}<br><span class="mono small">${g.phone ? `<a href="tel:${telPhone(g.phone)}">${esc(g.phone)}</a>` : ''}</span></td>
       <td>${esc(g.arrangement || '')}${g.location ? `<br><small>${esc(g.location)}</small>` : ''}${g.date ? `<br><small>Suggested: ${esc(g.date)}</small>` : ''}</td>
       <td><div class="clip">${esc(g.message || '')}</div></td>
       <td><select data-chg="giftStatus" data-id="${g.id}">${opts(STATUS.gift, g.status)}</select></td>
-      <td><div class="acts">${g.status !== 'RECEIVED' ? `<button class="b b--ok b--sm" data-act="giftReceived" data-id="${g.id}">Mark received</button>` : `<button class="b b--ghost b--sm" data-act="tyFor" data-cat="gift" data-name="${esc(g.name || 'Friend')}">Thank-you</button>`}</div></td></tr>`), 'No gift offers yet.')}`,
+      <td><div class="acts"><button class="b b--ghost b--sm" data-act="editOffer" data-id="${g.id}">Edit</button>${g.status !== 'RECEIVED' ? `<button class="b b--ok b--sm" data-act="giftReceived" data-id="${g.id}">Mark received</button>` : `<button class="b b--ghost b--sm" data-act="tyFor" data-cat="gift" data-name="${esc(g.name || 'Friend')}">Thank-you</button>`}</div></td></tr>`), 'No gift offers yet.')}`,
   };
 };
 ACT.giftStatus = async ({ id, value }) => { const g = find('giftOffers', id); await upd('giftOffers', id, { status: value, ...(value === 'RECEIVED' ? { receivedAt: serverTimestamp() } : {}) }, `Gift "${g.giftName}" → ${value}`); if (value === 'RECEIVED') autoThank('gift', g.name, g.ref); };
+ACT.editOffer = ({ id } = {}) => {
+  const g = id ? find('giftOffers', id) : { type: 'custom', giftName: '', description: '', name: '', phone: '', message: '', arrangement: 'Handed over in person', status: 'RECEIVED', photo: '' };
+  const sugg = [...A.data.gifts].sort((a, b) => (a.order ?? 99) - (b.order ?? 99)).map((x) => x.name);
+  let photo = g.photo || '';
+  const b = dlg(`<h3>${id ? 'Edit gift' : 'Add gift'}</h3><p class="muted">Record a gift given outside the website, and who gave it. Only <b>RECEIVED</b> gifts count on the public counter.</p>
+    <div class="row"><label class="f"><span>Gift</span><input id="oGift" list="oSugg" value="${esc(g.giftName || '')}" maxlength="120" placeholder="e.g. Microwave" /><datalist id="oSugg">${sugg.map((n) => `<option value="${esc(n)}"></option>`).join('')}</datalist></label>
+      <label class="f"><span>Type</span><select id="oType">${opts(Object.entries(GIFT_TYPE), g.type)}</select></label></div>
+    <div class="row"><label class="f"><span>Given by</span><input id="oName" value="${esc(g.name || '')}" maxlength="80" placeholder="e.g. The Kamau Family" /></label><label class="f"><span>Phone <em>(optional)</em></span><input id="oPhone" value="${esc(g.phone || '')}" /></label></div>
+    <label class="f"><span>Description <em>(optional)</em></span><input id="oDesc" value="${esc(g.description && g.description !== g.giftName ? g.description : '')}" maxlength="600" /></label>
+    <label class="f"><span>Their message <em>(optional)</em></span><textarea id="oMsg" rows="2" maxlength="600">${esc(g.message || '')}</textarea></label>
+    <div class="row"><label class="f"><span>Arrangement</span><input id="oArr" value="${esc(g.arrangement || '')}" maxlength="60" /></label><label class="f"><span>Status</span><select id="oStatus">${opts(STATUS.gift, g.status)}</select></label></div>
+    <label class="uploader"><img id="oPrev" style="max-height:120px;border-radius:8px" alt="" ${photo ? `src="${esc(photo)}"` : ''} /><span>Photo of the gift <em>(optional)</em></span><input type="file" accept="image/*" id="oFile" /></label>
+    <div class="toolbar" style="margin-top:1rem">${id ? '<button class="b b--bad" id="oDel">Delete</button>' : ''}<span class="sp"></span><button class="b b--ghost" data-x>Cancel</button><button class="b b--primary" id="oOk">${id ? 'Save changes' : 'Add gift'}</button></div>`);
+  $('#oFile', b).onchange = async (e) => { try { photo = await compressImage(e.target.files[0], 900, 0.75); $('#oPrev').src = photo; } catch (err) { toast(err.message, true); } };
+  if (id) $('#oDel', b).onclick = async () => { if (!(await confirmDlg('Delete this gift record permanently?', 'Delete', true))) return; await deleteDoc(doc(db, 'giftOffers', id)); toast('Deleted'); log(`Gift "${g.giftName}" deleted`); };
+  $('#oOk', b).onclick = async () => {
+    const giftName = $('#oGift').value.trim(); if (!giftName) return toast('Enter the gift', true);
+    const name = $('#oName').value.trim(); if (!name) return toast('Enter who gave it', true);
+    const status = $('#oStatus').value;
+    const data = { type: $('#oType').value, giftName, description: $('#oDesc').value.trim() || giftName, name, phone: normalizePhone($('#oPhone').value) || $('#oPhone').value.trim(), message: $('#oMsg').value.trim(), arrangement: $('#oArr').value.trim(), status, photo };
+    if (status === 'RECEIVED' && g.status !== 'RECEIVED') data.receivedAt = serverTimestamp();
+    if (id) await upd('giftOffers', id, data, `Gift "${giftName}" edited`);
+    else {
+      const ref = makeRef('G');
+      await addDoc(collection(db, 'giftOffers'), { ...data, ref, vid: 'admin', addedBy: A.user.email, at: serverTimestamp() });
+      toast('Gift added ✓'); log(`Gift "${giftName}" from ${name} added`);
+      if (status === 'RECEIVED') autoThank('gift', name, ref);
+    }
+    closeDlg();
+  };
+};
 ACT.giftReceived = ({ id }) => ACT.giftStatus({ id, value: 'RECEIVED' });
 ACT.reqStatus = ({ id, value }) => upd('requests', id, { status: value }, `Call request → ${value}`);
 ACT.viewImg = ({ src }) => dlg(`<img src="${esc(src)}" style="width:100%;border-radius:12px" alt="" />`);
@@ -546,15 +637,39 @@ VIEWS.wisdom = () => {
   const cnt = (s) => A.data.wisdom.filter((w) => w.status === s).length;
   return {
     html: `<div class="grid g-4" style="margin-bottom:16px"><div class="card kpi"><span>Awaiting moderation</span><b>${cnt('PENDING')}</b></div><div class="card kpi"><span>Approved</span><b>${cnt('APPROVED')}</b><small>${A.data.wisdom.filter((w) => w.status === 'APPROVED' && w.public).length} on the public wall</small></div><div class="card kpi"><span>Private messages</span><b>${A.data.wisdom.filter((w) => !w.public).length}</b><small>never shown publicly</small></div><div class="card kpi"><span>Rejected</span><b>${cnt('REJECTED')}</b></div></div>
-    <div class="toolbar"><input type="search" placeholder="Search messages…" data-f="wQ" value="${esc(q)}" /><select data-f="wStatus"><option value="">All</option>${opts(STATUS.moderation, sf)}</select><select data-f="wCat"><option value="">All categories</option>${opts(A.settings.wisdomCategories, cf)}</select><span class="sp"></span><button class="b b--ghost" data-act="wCats">Manage categories</button><button class="b b--ghost" data-act="exportWisdom">Export CSV</button></div>
+    <div class="toolbar"><input type="search" placeholder="Search messages…" data-f="wQ" value="${esc(q)}" /><select data-f="wStatus"><option value="">All</option>${opts(STATUS.moderation, sf)}</select><select data-f="wCat"><option value="">All categories</option>${opts(A.settings.wisdomCategories, cf)}</select><span class="sp"></span><button class="b b--ghost" data-act="wCats">Manage categories</button><button class="b b--ghost" data-act="exportWisdom">Export CSV</button><button class="b b--primary" data-act="editWisdom">+ Add words of wisdom</button></div>
     ${table(['Date', 'From', 'Category', 'Message', 'Visibility', 'Status', ''], rows.map((w) => `<tr><td>${fmtDate(w.at)}</td><td>${esc(w.name || 'Anonymous')}</td><td>${esc(w.category)}</td><td style="max-width:420px">${esc(w.message)}</td>
       <td>${w.public || w.hidden ? '<span class="st st--info">Public OK</span>' : '<span class="st st--mute">Private</span>'}${w.public || w.hidden ? `<br><label class="tog small" style="margin:.4rem 0 0"><input type="checkbox" ${w.hidden ? '' : 'checked'} data-chg="wVisible" data-id="${w.id}" /> on wall</label>` : ''}</td>
-      <td>${pill(w.status)}</td><td><div class="acts">${w.status !== 'APPROVED' ? `<button class="b b--ok b--sm" data-act="wSet" data-s="APPROVED" data-id="${w.id}">Approve</button>` : ''}${w.status !== 'REJECTED' ? `<button class="b b--bad b--sm" data-act="wSet" data-s="REJECTED" data-id="${w.id}">Reject</button>` : ''}<button class="b b--ghost b--sm" data-act="delDoc" data-col="wisdom" data-id="${w.id}">Delete</button></div></td></tr>`), sf === 'PENDING' ? 'All caught up. No messages awaiting moderation.' : 'No messages.')}`,
+      <td>${pill(w.status)}</td><td><div class="acts"><button class="b b--ghost b--sm" data-act="editWisdom" data-id="${w.id}">Edit</button>${w.status !== 'APPROVED' ? `<button class="b b--ok b--sm" data-act="wSet" data-s="APPROVED" data-id="${w.id}">Approve</button>` : ''}${w.status !== 'REJECTED' ? `<button class="b b--bad b--sm" data-act="wSet" data-s="REJECTED" data-id="${w.id}">Reject</button>` : ''}<button class="b b--ghost b--sm" data-act="delDoc" data-col="wisdom" data-id="${w.id}">Delete</button></div></td></tr>`), sf === 'PENDING' ? 'All caught up. No messages awaiting moderation.' : 'No messages.')}`,
   };
 };
 ACT.wSet = async ({ id, s }) => { const w = find('wisdom', id); await upd('wisdom', id, { status: s, moderatedAt: serverTimestamp() }, `Wisdom ${s.toLowerCase()}`); if (s === 'APPROVED') autoThank(/prayer|bless/i.test(w.category) ? 'blessing' : 'wisdom', w.name, w.ref); };
 // "on wall" uses the public flag only when the visitor allowed it; hiding sets public=false (private messages can never be made public)
 ACT.wVisible = async ({ id, value }) => { const w = find('wisdom', id); if (!w.public && !w.hidden) return toast('The visitor asked for this to stay private', true); await upd('wisdom', id, { public: !!value, hidden: !value }, value ? 'Shown on wall' : 'Hidden from wall'); };
+ACT.editWisdom = ({ id } = {}) => {
+  const w = id ? find('wisdom', id) : { name: '', category: A.settings.wisdomCategories[0], message: '', public: true, status: 'APPROVED' };
+  const onWall = id ? !!w.public && !w.hidden : true;
+  const b = dlg(`<h3>${id ? 'Edit words of wisdom' : 'Add words of wisdom'}</h3><p class="muted">For advice and blessings shared by card, WhatsApp, phone or in person.</p>
+    <div class="row"><label class="f"><span>Given by</span><input id="wName" value="${esc(w.name || '')}" maxlength="80" placeholder="e.g. Grandma Njeri" /></label><label class="f"><span>Category</span><select id="wCat">${opts(A.settings.wisdomCategories, w.category)}</select></label></div>
+    <label class="f"><span>Their words</span><textarea id="wMsg" rows="5" maxlength="1500">${esc(w.message || '')}</textarea></label>
+    <div class="row"><label class="f"><span>Status</span><select id="wStatus">${opts(STATUS.moderation, w.status)}</select></label><label class="tog" style="align-self:end"><input type="checkbox" id="wPub" ${onWall ? 'checked' : ''} /> Show on the public wall</label></div>
+    <div class="toolbar">${id ? '<button class="b b--bad" id="wDel">Delete</button>' : ''}<span class="sp"></span><button class="b b--ghost" data-x>Cancel</button><button class="b b--primary" id="wOk">${id ? 'Save changes' : 'Add'}</button></div>`);
+  if (id) $('#wDel', b).onclick = () => ACT.delDoc({ col: 'wisdom', id });
+  $('#wOk', b).onclick = async () => {
+    const message = $('#wMsg').value.trim(); if (!message) return toast('Enter the words of wisdom', true);
+    const name = $('#wName').value.trim(), category = $('#wCat').value, status = $('#wStatus').value, pub = $('#wPub').checked;
+    // a visitor who asked for privacy keeps it: admins can't publish their message
+    if (id && pub && !w.public && !w.hidden && w.vid !== 'admin') return toast('The visitor asked for this to stay private', true);
+    if (id) await upd('wisdom', id, { name, category, message, status, public: pub, hidden: !pub && (w.public || w.hidden || w.vid === 'admin') }, 'Wisdom edited');
+    else {
+      const ref = makeRef('W');
+      await addDoc(collection(db, 'wisdom'), { name, category, message, status, public: pub, hidden: !pub, ref, vid: 'admin', addedBy: A.user.email, at: serverTimestamp(), moderatedAt: serverTimestamp() });
+      toast('Words of wisdom added ✓'); log(`Wisdom from ${name || 'Anonymous'} added`);
+      if (status === 'APPROVED') autoThank(/prayer|bless/i.test(category) ? 'blessing' : 'wisdom', name, ref);
+    }
+    closeDlg();
+  };
+};
 ACT.wCats = () => {
   const b = dlg(`<h3>Wisdom categories</h3><div class="chips">${A.settings.wisdomCategories.map((c, i) => `<span>${esc(c)}<button data-act="rmCat" data-list="wisdomCategories" data-i="${i}">×</button></span>`).join('')}</div><div class="toolbar"><input id="newWCat" placeholder="New category" style="padding:.5em .7em;border:1px solid var(--line);border-radius:9px;flex:1" /><button class="b b--primary b--sm" id="addW">Add</button></div>`);
   $('#addW', b).onclick = async () => { await ACT.addCat({ list: 'wisdomCategories', input: 'newWCat' }); ACT.wCats(); };
@@ -820,6 +935,7 @@ ACT.repVisits = () => csv(sorted('visits').map((v) => ({ date: toDate(v.at)?.toI
 // ---------------- PUBLIC NUMBERS (manual adjustments) ----------------
 const ADJ = [
   ['confirmedTotal', 'Confirmed contributions', true, 'Money received outside the site (cash, bank, direct M-Pesa)'],
+  ['confirmedCount', 'People who contributed', false, 'Everyone who gave money outside the site (count of people)'],
   ['pledgedOutstanding', 'Outstanding pledges', true, 'Promises made in person or by phone'],
   ['giftsReceived', 'Gifts received', false, 'Gifts handed over directly'],
   ['wisdomApproved', 'Words of wisdom & blessings', false, 'Messages received by card, WhatsApp, in person'],

@@ -113,7 +113,7 @@ service cloud.firestore {
     // ---------- wisdom & guestbook (moderated) ----------
     match /wisdom/{id} {
       allow read: if (resource.data.status == 'APPROVED' && resource.data.public == true) || isAdmin();
-      allow create: if only(['name', 'message', 'category', 'public', 'status', 'vid', 'ref', 'at'])
+      allow create: if isAdmin() || only(['name', 'message', 'category', 'public', 'status', 'vid', 'ref', 'at'])
         && stamped() && d().status == 'PENDING' && d().public is bool
         && d().message is string && d().message.size() > 0 && d().message.size() <= 1500
         && str('name', 80) && str('category', 60);

@@ -746,3 +746,30 @@ p { margin: 0 0 1em; }
   .hook b { font-size: 2.6rem; }
   .kudos b { font-size: 3rem; }
 }
+
+/* ---------- stats: keep the grid even ---------- */
+.stat:nth-child(even):last-child { grid-column: span 2; }
+@media (max-width: 640px) { .stat:nth-child(even):last-child { grid-column: auto; } }
+
+/* ---------- bottom credit bar (Keypole Technologies) ---------- */
+.kp-bar { position: relative; z-index: 2; background: var(--black); border-top: 1px solid var(--ivory-08); padding: 28px var(--gutter) calc(22px + env(safe-area-inset-bottom)); display: grid; justify-items: center; gap: 14px; text-align: center; }
+.kp-about { max-width: 640px; margin: 0; font-size: .74rem; line-height: 1.6; color: var(--ivory-50); }
+.kp-about strong { color: var(--ivory-70); font-weight: 600; }
+.kp-credit { appearance: none; background: transparent; border: 1px solid var(--ivory-15); color: var(--ivory-70); font: inherit; font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; padding: .7em 1.3em; border-radius: 99px; cursor: pointer; transition: color .3s, border-color .3s, background .3s; }
+.kp-credit b { color: var(--ivory); font-weight: 600; }
+.kp-credit:hover, .kp-credit:focus-visible { border-color: var(--rose); background: rgba(109, 1, 26, .25); color: var(--ivory); outline: none; }
+.kp-modal { text-align: center; }
+.kp-modal .kp-mark { width: 64px; height: 64px; margin: 0 auto 1rem; border-radius: 18px; display: grid; place-items: center; background: linear-gradient(135deg, var(--burgundy), var(--wine)); box-shadow: 0 0 0 6px rgba(109,1,26,.22); font-weight: 700; letter-spacing: .06em; font-size: 1.15rem; }
+.kp-modal h3 { padding: 0 !important; }
+.kp-modal .kp-eyebrow { font-size: .68rem; letter-spacing: .3em; text-transform: uppercase; color: var(--rose); margin: 0 0 .5rem; }
+.kp-modal ul { list-style: none; padding: 0; margin: 0 0 1.4rem; display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem; }
+.kp-modal li { font-size: .74rem; padding: .35em .8em; border-radius: 99px; background: var(--ivory-08); color: var(--ivory-70); }
+.kp-actions { display: grid; gap: .6rem; }
+.kp-actions .btn { justify-content: center; width: 100%; }
+.kp-phones { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.kp-phones a { display: grid; gap: .1rem; padding: .8rem .6rem; border-radius: 14px; border: 1px solid var(--ivory-15); text-decoration: none; transition: border-color .3s, background .3s; }
+.kp-phones a:hover { border-color: var(--ivory); background: var(--ivory-08); }
+.kp-phones small { font-size: .66rem; letter-spacing: .2em; text-transform: uppercase; color: var(--ivory-50); }
+.kp-phones b { font-variant-numeric: tabular-nums; font-weight: 600; }
+.kp-modal .kp-close { margin-top: 1rem; }
+@media (max-width: 380px) { .kp-phones { grid-template-columns: 1fr; } }

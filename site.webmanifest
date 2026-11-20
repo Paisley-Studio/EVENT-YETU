@@ -1,0 +1,12 @@
+{
+  "name": "The Next Chapter · Mesh & Reachel's Ruracio",
+  "short_name": "The Next Chapter",
+  "description": "Mesh & Reachel's Ruracio, a Kikuyu traditional introduction ceremony in Ruiru, Kenya.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "lang": "en-KE",
+  "categories": ["lifestyle", "social", "events"],
+  "icons": [{ "src": "/assets/img/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

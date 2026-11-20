@@ -1039,7 +1039,7 @@ function initStats() {
     applyAdjust(); renderStats();
   }, () => {});
 }
-const ADJ_KEYS = ['confirmedTotal', 'pledgedOutstanding', 'giftsReceived', 'wisdomApproved', 'participants'];
+const ADJ_KEYS = ['confirmedTotal', 'confirmedCount', 'pledgedOutstanding', 'giftsReceived', 'wisdomApproved', 'participants'];
 function applyAdjust() {
   const raw = S.raw || {}, adj = S.settings.impactAdjust || {};
   S.stats = { ...raw };
@@ -1513,3 +1513,34 @@ boot().catch((e) => {
   $('#loader')?.remove(); $('#gate')?.remove();
   document.body.classList.remove('is-loading', 'is-gated');
 });
+
+// ---------------------------------------------------------------------------
+// BUILT BY: Keypole Technologies contact modal
+// The email address is never rendered on the page or kept as plain text in the source;
+// it is assembled only when the visitor taps "Email us" and handed straight to their mail app.
+// ---------------------------------------------------------------------------
+const KP = {
+  m: () => ['moc.liamg', '828ignawmhsem'].map((x) => [...x].reverse().join('')).reverse().join('@'),
+  phones: [['0115 721 877', '254115721877'], ['0182 450 860', '254182450860']],
+};
+function openKeypole() {
+  openModal(`<div class="kp-modal">
+    <div class="kp-mark" aria-hidden="true">KP</div>
+    <p class="kp-eyebrow">Keypole Technologies</p>
+    <h3 id="modalTitle">Need a system like this?</h3>
+    <p class="muted">Digital invitations, ruracio &amp; wedding sites, M-Pesa contributions, gift registries, guestbooks, event dashboards and more, designed and built for you.</p>
+    <ul aria-label="What we build"><li>Weddings &amp; Ruracio</li><li>Events</li><li>M-Pesa payments</li><li>Websites</li><li>Business systems</li></ul>
+    <div class="kp-actions">
+      <button type="button" class="btn btn--ivory btn--lg" id="kpMail">Email us <span class="arr">→</span></button>
+      <div class="kp-phones">${KP.phones.map(([t, n]) => `<a href="tel:+${n}" aria-label="Call ${t}"><small>Call</small><b>${t}</b></a>`).join('')}</div>
+      <div class="kp-phones">${KP.phones.map(([t, n]) => `<a href="https://wa.me/${n}?text=${encodeURIComponent('Hello Keypole Technologies, I saw The Next Chapter and would like a system like this.')}" target="_blank" rel="noopener" aria-label="WhatsApp ${t}"><small>WhatsApp</small><b>${t}</b></a>`).join('')}</div>
+    </div>
+    <button type="button" class="btn btn--ghost kp-close" data-close>Close</button>
+  </div>`);
+  $('#kpMail').addEventListener('click', () => {
+    const subject = encodeURIComponent('Enquiry: a system like The Next Chapter');
+    const body = encodeURIComponent('Hello Keypole Technologies,\n\nI saw The Next Chapter and would like a similar system.\n\nMy name:\nMy event / business:\nWhat I need:\n\nThank you.');
+    location.href = `mailto:${KP.m()}?subject=${subject}&body=${body}`;
+  });
+}
+document.getElementById('kpCredit')?.addEventListener('click', openKeypole);

@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>The Next Chapter</title>
+  <meta name="description" content="You're invited to be part of our next chapter: our story, the occasion, and a few beautiful ways to celebrate with us." />
+  <meta name="theme-color" content="#000000" />
+  <meta property="og:title" content="The Next Chapter" />
+  <meta property="og:description" content="A love story, written together. Open your invitation." />
+  <meta property="og:image" content="assets/img/art-moon-couple.jpg" />
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/site.css" />
+  <link rel="preload" as="image" href="assets/img/art-moon-couple.jpg" />
+</head>
+<body class="is-loading">
+
+  <!-- ============ LOADER: coin rolls in → flips → unveils the title ============ -->
+  <div id="loader" aria-live="polite" aria-label="Loading The Next Chapter">
+    <div class="loader-curtain loader-curtain--l"></div>
+    <div class="loader-curtain loader-curtain--r"></div>
+    <div class="loader-stage">
+      <div class="coin-track">
+        <div class="coin" id="coin">
+          <div class="coin-face coin-front"><span class="coin-letter" data-monogram>M</span><i class="coin-ring"></i><i class="coin-shine"></i></div>
+          <div class="coin-face coin-back"><span class="coin-letter coin-letter--sm">TNC</span><i class="coin-ring"></i><i class="coin-shine"></i></div>
+        </div>
+        <div class="coin-shadow"></div>
+      </div>
+      <h1 class="loader-title" aria-hidden="true"><span class="lt-line" data-split>THE NEXT</span><span class="lt-line" data-split>CHAPTER</span></h1>
+      <p class="loader-tag" data-bind="brand.tagline">A love story, written together.</p>
+    </div>
+    <div class="loader-progress"><i id="loaderBar"></i></div>
+  </div>
+
+  <!-- ============ MODULE 1: THE FIVE-MINUTE AGREEMENT ============ -->
+  <div id="gate" hidden>
+    <div class="gate-bg"><img src="assets/img/art-moon-hands.jpg" alt="" /></div>
+    <div class="gate-card">
+      <div class="gate-mono">TNC</div>
+      <p class="eyebrow">A five-minute journey</p>
+      <h2 data-bind="texts.agreementTitle">Before we begin…</h2>
+      <p class="gate-body" data-bind="texts.agreementBody"></p>
+      <label class="agree">
+        <input type="checkbox" id="agreeBox" />
+        <span class="agree-box"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <span data-bind="texts.agreementLabel">I agree to walk this journey to the end.</span>
+      </label>
+      <p class="agree-hint" id="agreeHint">Tick the box to begin</p>
+      <button class="btn btn--ivory btn--lg" id="agreeGo" disabled hidden>Begin the journey <span class="arr">→</span></button>
+      <div class="gate-alt">
+        <button class="link" id="gateExit">Not today</button>
+      </div>
+      <p class="fine">Just for fun. Agreeing isn't a promise to give anything.</p>
+    </div>
+    <div class="gate-bye" hidden>
+      <h2>No worries at all.</h2>
+      <p>Thank you for stopping by. The door stays open whenever you'd like to return.</p>
+      <button class="btn btn--ghost" id="gateBack">Actually, take me in</button>
+    </div>
+  </div>
+
+  <!-- ============ CINEMA CHROME ============ -->
+  <div class="grain" aria-hidden="true"></div>
+  <div class="letterbox letterbox--top" aria-hidden="true"></div>
+  <div class="letterbox letterbox--bot" aria-hidden="true"></div>
+  <div class="cursor" aria-hidden="true"><i></i></div>
+  <div class="scene-progress" aria-hidden="true"><i></i></div>
+
+  <header class="nav" id="nav">
+    <a href="#top" class="nav-logo" aria-label="The Next Chapter: back to top">
+      <span class="nav-coin">TNC</span><span class="nav-word">The Next Chapter</span>
+    </a>
+    <nav class="nav-links" aria-label="Chapters">
+      <a href="#story">Our Story</a><a href="#occasion">Occasion</a><a href="#participate">Participate</a><a href="#guestbook">Guestbook</a><a href="#invite">Invitation</a>
+    </nav>
+    <button class="nav-burger" id="navBurger" aria-label="Open menu" aria-expanded="false"><i></i><i></i></button>
+  </header>
+  <div class="menu" id="menu" hidden>
+    <ol>
+      <li><a href="#story"><small>I</small>Our Story</a></li>
+      <li><a href="#occasion"><small>II</small>The Occasion</a></li>
+      <li><a href="#participate"><small>III</small>Participate</a></li>
+      <li><a href="#impact"><small>IV</small>Collective Impact</a></li>
+      <li><a href="#guestbook"><small>V</small>Guestbook</a></li>
+      <li><a href="#invite"><small>VI</small>Your Invitation</a></li>
+    </ol>
+  </div>
+
+  <main id="top">
+
+    <!-- ============ HERO / OPENING SCENE ============ -->
+    <section class="hero" id="hero">
+      <div class="hero-media"><img src="assets/img/art-moon-couple.jpg" alt="Silhouette of a couple sitting on a branch before a full moon" data-bind-src="couple.heroImage" /></div>
+      <div class="hero-vignette"></div>
+      <div class="hero-content">
+        <p class="eyebrow hero-eyebrow"><span id="heroGreeting">You are invited</span></p>
+        <h1 class="hero-title">
+          <span class="ht-row"><span class="ht" data-split>THE</span></span>
+          <span class="ht-row"><span class="ht ht--outline" data-split>NEXT</span></span>
+          <span class="ht-row"><span class="ht" data-split>CHAPTER</span></span>
+        </h1>
+        <p class="hero-names"><span data-bind="couple.partnerA">Michael</span> <em>&amp;</em> <span data-bind="couple.partnerB">Amani</span></p>
+      </div>
+      <div class="hero-scroll"><span>Scroll to begin</span><i></i></div>
+      <div class="hero-meta">
+        <span data-bind="occasion.title">The Family Introduction</span>
+        <span id="heroDate"></span>
+      </div>
+    </section>
+
+    <!-- ============ CHAPTER I · OUR STORY ============ -->
+    <section class="title-card" id="story" data-chapter="I">
+      <div class="tc-bg"><img src="assets/img/art-held-hands.jpg" alt="" loading="lazy" /></div>
+      <span class="tc-ghost" aria-hidden="true"></span>
+      <div class="tc-inner">
+        <span class="tc-num">Chapter I</span>
+        <h2 class="tc-title" data-split>Our Story</h2>
+        <span class="tc-line"></span>
+      </div>
+    </section>
+
+    <section class="story">
+      <div class="story-couple">
+        <figure class="portrait portrait--a">
+          <div class="portrait-img"><img data-bind-src="couple.photoA" src="assets/img/art-lions.jpg" alt="" /></div>
+          <figcaption data-bind="couple.partnerA">Michael</figcaption>
+        </figure>
+        <div class="story-amp">&amp;</div>
+        <figure class="portrait portrait--b">
+          <div class="portrait-img"><img data-bind-src="couple.photoB" src="assets/img/art-tulips.jpg" alt="" /></div>
+          <figcaption data-bind="couple.partnerB">Amani</figcaption>
+        </figure>
+      </div>
+      <p class="story-text" id="storyText" data-bind="couple.story"></p>
+      <blockquote class="story-msg"><span data-bind="couple.message"></span><cite>— <span data-bind="couple.partnerA"></span> &amp; <span data-bind="couple.partnerB"></span></cite></blockquote>
+    </section>
+
+    <!-- Milestones: pinned horizontal reel -->
+    <section class="reel" id="milestones">
+      <div class="reel-head"><p class="eyebrow">Milestones</p><h3>How we got here</h3></div>
+      <div class="reel-track" id="reelTrack"></div>
+    </section>
+
+    <!-- 3D orbit gallery (inspired by the rotating card cylinder) -->
+    <section class="orbit" id="gallery">
+      <div class="orbit-head"><p class="eyebrow">Moments</p><h3>Frames from our story</h3><p class="hint">Drag to spin · tap to open</p></div>
+      <div class="orbit-stage" id="orbitStage"><div class="orbit-ring" id="orbitRing"></div></div>
+      <p class="orbit-caption" id="orbitCaption">&nbsp;</p>
+    </section>
+
+    <!-- ============ CHAPTER II · THE OCCASION ============ -->
+    <section class="title-card title-card--burgundy" id="occasion" data-chapter="II">
+      <div class="tc-bg"><img src="assets/img/art-moon-hands.jpg" alt="" loading="lazy" /></div>
+      <span class="tc-ghost" aria-hidden="true"></span>
+      <div class="tc-inner">
+        <span class="tc-num">Chapter II</span>
+        <h2 class="tc-title" data-split>The Occasion</h2>
+        <span class="tc-line"></span>
+      </div>
+    </section>
+
+    <section class="occasion">
+      <div class="occ-bg"><img src="assets/img/art-sunset-tree.jpg" alt="" /></div>
+      <div class="occ-grid">
+        <div class="occ-main">
+          <p class="eyebrow" data-bind="occasion.subtitle"></p>
+          <h3 class="occ-title" data-bind="occasion.title"></h3>
+          <p class="occ-desc" data-bind="occasion.description"></p>
+          <p class="occ-details" data-bind="occasion.details"></p>
+        </div>
+        <div class="occ-side">
+          <div class="occ-date">
+            <span class="od-day" id="odDay">19</span>
+            <span class="od-rest"><b id="odMonth">December</b><span id="odYear">2026</span><span id="odTime"></span></span>
+          </div>
+          <div class="occ-venue"><span class="eyebrow">Venue</span><b data-bind="occasion.venue"></b><a id="venueMap" class="link" target="_blank" rel="noopener" hidden>Open in maps ↗</a></div>
+          <div class="countdown" id="countdown">
+            <div><b data-cd="d">00</b><span>days</span></div>
+            <div><b data-cd="h">00</b><span>hours</span></div>
+            <div><b data-cd="m">00</b><span>mins</span></div>
+            <div><b data-cd="s">00</b><span>secs</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CHAPTER III · PARTICIPATE ============ -->
+    <section class="title-card" id="participate" data-chapter="III">
+      <div class="tc-bg"><img src="assets/img/art-roses.jpg" alt="" loading="lazy" /></div>
+      <span class="tc-ghost" aria-hidden="true"></span>
+      <div class="tc-inner">
+        <span class="tc-num">Chapter III</span>
+        <h2 class="tc-title" data-split>Be Part of It</h2>
+        <p class="tc-sub" data-bind="texts.participateIntro"></p>
+        <span class="tc-line"></span>
+      </div>
+    </section>
+
+    <section class="doors">
+      <a class="door" href="#give" data-tilt>
+        <img src="assets/img/art-roses.jpg" alt="" />
+        <div class="door-body"><span class="door-n">01</span><h4>Give</h4><p>Contribute now through M-Pesa, or pledge for a later date.</p><span class="door-go">Open →</span></div>
+      </a>
+      <a class="door" href="#gifts" data-tilt>
+        <img src="assets/img/art-balance.jpg" alt="" />
+        <div class="door-body"><span class="door-n">02</span><h4>Gift</h4><p>Pick a number, scratch a surprise, or offer anything you have in mind.</p><span class="door-go">Play →</span></div>
+      </a>
+      <a class="door" href="#wisdom" data-tilt>
+        <img src="assets/img/art-moon-dreamer.jpg" alt="" />
+        <div class="door-body"><span class="door-n">03</span><h4>Wisdom</h4><p>Advice, prayers, blessings and the funny lessons nobody tells you.</p><span class="door-go">Share →</span></div>
+      </a>
+    </section>
+
+    <!-- MODULE 4: FINANCIAL SUPPORT -->
+    <section class="give" id="give">
+      <div class="give-left">
+        <p class="eyebrow">01 · Give</p>
+        <h3>Plant a seed in our new home.</h3>
+        <p class="muted">Entirely voluntary, and only if and when you're comfortable. Pledges are promises, not payments, and we'll never treat them as money received.</p>
+        <div class="meter" id="giveMeter">
+          <div class="meter-bar"><i class="meter-confirmed"></i><i class="meter-pledged"></i></div>
+          <div class="meter-legend">
+            <span><i class="sw sw--c"></i>Confirmed <b id="mConfirmed">KES 0</b></span>
+            <span><i class="sw sw--p"></i>Pledged <b id="mPledged">KES 0</b></span>
+          </div>
+          <p class="meter-target">Target <b id="mTarget">KES 500,000</b> · Remaining <b id="mRemaining">-</b></p>
+        </div>
+      </div>
+      <div class="give-right">
+        <div class="tabs" role="tablist">
+          <button role="tab" class="tab is-on" data-tab="now" aria-selected="true">Contribute now</button>
+          <button role="tab" class="tab" data-tab="later" aria-selected="false">Pledge now, pay later</button>
+          <i class="tab-ink"></i>
+        </div>
+
+        <form class="panel is-on" data-panel="now" id="formNow" novalidate>
+          <div class="chips" id="amountChips"></div>
+          <label class="field"><span>Amount (KES)</span><input type="number" name="amount" min="10" max="250000" step="1" inputmode="numeric" placeholder="Custom amount" required /></label>
+          <label class="field"><span>Your name <em>(optional)</em></span><input type="text" name="name" maxlength="80" autocomplete="name" /></label>
+          <label class="field"><span>M-Pesa phone number</span><input type="tel" name="phone" placeholder="07XX XXX XXX" autocomplete="tel" required /></label>
+          <label class="check"><input type="checkbox" name="anonymous" /><span></span>Keep my contribution anonymous</label>
+          <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+          <button class="btn btn--burgundy btn--lg btn--block" type="submit">Send M-Pesa request <span class="arr">→</span></button>
+          <p class="fine">You'll get a prompt on your phone to enter your M-Pesa PIN. Nothing is charged until you confirm.</p>
+        </form>
+
+        <form class="panel" data-panel="later" id="formLater" novalidate>
+          <p class="panel-intro">Not today? That's perfectly okay. Tell us what you'd like to pledge and when you'd like a gentle reminder.</p>
+          <label class="field"><span>Pledge amount (KES)</span><input type="number" name="amount" min="10" max="1000000" inputmode="numeric" required /></label>
+          <label class="field"><span>Remind me on</span><input type="date" name="date" required /></label>
+          <label class="field"><span>Your name <em>(optional)</em></span><input type="text" name="name" maxlength="80" /></label>
+          <label class="field"><span>Phone <em>(optional, for the reminder)</em></span><input type="tel" name="phone" placeholder="07XX XXX XXX" /></label>
+          <label class="check"><input type="checkbox" name="consent" checked /><span></span>Yes, send me one friendly reminder on that date</label>
+          <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+          <button class="btn btn--burgundy btn--lg btn--block" type="submit">Record my pledge <span class="arr">→</span></button>
+        </form>
+      </div>
+    </section>
+
+    <!-- MODULE 5: INTERACTIVE GIFT EXPERIENCE -->
+    <section class="showcase" id="gifts">
+      <div class="sc-blob-wrap">
+        <svg class="sc-blob" viewBox="0 0 600 600" aria-hidden="true"><path id="blobPath" d="" /></svg>
+        <h4 class="sc-name" id="scName">Gift</h4>
+        <div class="sc-img" id="scImg"><img alt="" /></div>
+        <span class="sc-float sc-float--a"></span><span class="sc-float sc-float--b"></span><span class="sc-float sc-float--c"></span>
+      </div>
+      <div class="sc-copy">
+        <p class="eyebrow">02 · Gift</p>
+        <h3>The Numbers Game</h3>
+        <p>No registry. No pressure. Pick a number, scratch the card and see what surprise idea appears. Love it? Offer it. Prefer something else? That's welcome too.</p>
+        <ol class="sc-steps"><li>Pick a number</li><li>Scratch to reveal</li><li>Choose what works for you</li></ol>
+        <div class="sc-list" id="scList"></div>
+      </div>
+    </section>
+
+    <section class="numbers" id="numbers">
+      <div class="numbers-head">
+        <h3>Pick your number</h3>
+        <p class="muted">Every tile hides a gift suggestion. A suggestion, never an obligation.</p>
+      </div>
+      <div class="console" id="console">
+        <div class="lcd" aria-live="polite">
+          <span class="lcd-num" id="lcdNum">--</span>
+          <span class="lcd-msg" id="lcdMsg">Pick a number. Any number.</span>
+        </div>
+        <div class="tiles" id="tiles"></div>
+      </div>
+      <div class="gift-actions">
+        <button class="btn btn--ghost" data-open="custom">I have something else in mind</button>
+        <button class="btn btn--ghost" data-open="call">Request a call</button>
+        <button class="btn btn--ghost" data-open="collection">Arrange gift collection</button>
+      </div>
+    </section>
+
+    <!-- MODULE 6: ADVICE, WISDOM & BLESSINGS -->
+    <section class="wisdom" id="wisdom">
+      <div class="wisdom-form-wrap">
+        <p class="eyebrow">03 · Wisdom</p>
+        <h3>Words to carry us.</h3>
+        <p class="muted">Not everything precious comes in a box. Share what life has taught you.</p>
+        <form id="formWisdom" novalidate>
+          <div class="pills" id="wisdomCats"></div>
+          <label class="field"><span>Your message</span><textarea name="message" rows="5" maxlength="1500" required placeholder="Never go to bed angry… or at least go to bed with snacks."></textarea></label>
+          <label class="field"><span>Your name <em>(optional)</em></span><input type="text" name="name" maxlength="80" /></label>
+          <label class="check"><input type="checkbox" name="public" checked /><span></span>You may display this publicly on the wisdom wall</label>
+          <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+          <button class="btn btn--ivory btn--lg" type="submit">Share my wisdom <span class="arr">→</span></button>
+        </form>
+      </div>
+      <div class="wall">
+        <div class="wall-count"><b id="wisdomCount">0</b><span>approved words of wisdom & blessings</span></div>
+        <div class="marquee" id="wallA"></div>
+        <div class="marquee marquee--rev" id="wallB"></div>
+      </div>
+    </section>
+
+    <!-- ============ CHAPTER IV · COLLECTIVE IMPACT ============ -->
+    <section class="impact" id="impact">
+      <div class="impact-head">
+        <span class="tc-num">Chapter IV</span>
+        <h2 data-split>Collective Impact</h2>
+        <p class="muted" data-bind="texts.impactIntro"></p>
+      </div>
+      <div class="impact-grid">
+        <div class="ring-wrap">
+          <svg viewBox="0 0 200 200" class="ring" aria-hidden="true">
+            <defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="rgba(255,252,239,.08)"/><line x1="0" y1="0" x2="0" y2="6" stroke="#C25B6E" stroke-width="3"/></pattern></defs>
+            <circle cx="100" cy="100" r="86" class="ring-bg" />
+            <circle cx="100" cy="100" r="86" class="ring-pledged" id="ringPledged" />
+            <circle cx="100" cy="100" r="86" class="ring-confirmed" id="ringConfirmed" />
+          </svg>
+          <div class="ring-center"><b id="ringPct">0%</b><span>of target confirmed</span></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><b data-stat="confirmedTotal" data-money>0</b><span>Confirmed contributions</span></div>
+          <div class="stat stat--hatch"><b data-stat="pledgedOutstanding" data-money>0</b><span>Outstanding pledges <em>(promised, not yet received)</em></span></div>
+          <div class="stat"><b data-stat="giftsReceived">0</b><span>Gifts physically received</span></div>
+          <div class="stat"><b data-stat="wisdomApproved">0</b><span>Approved messages &amp; blessings</span></div>
+          <div class="stat"><b data-stat="participants">0</b><span>People who have taken part</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CHAPTER V · GUESTBOOK ============ -->
+    <section class="guestbook" id="guestbook">
+      <div class="gb-book">
+        <div class="gb-seal" id="gbSeal" aria-hidden="true"></div>
+        <div class="gb-page gb-page--left">
+          <span class="tc-num">Chapter V</span>
+          <h2>The Guestbook</h2>
+          <p class="muted" data-bind="texts.guestbookIntro"></p>
+          <form id="formGuest" novalidate>
+            <label class="field field--line"><span>Your name</span><input name="name" maxlength="80" required /></label>
+            <label class="field field--line"><span>A short message</span><textarea name="message" rows="3" maxlength="500"></textarea></label>
+            <div class="sig">
+              <span class="sig-label">Sign here</span>
+              <canvas id="gbSig" aria-label="Signature pad: draw your signature"></canvas>
+              <button type="button" class="link sig-clear" data-clear="gbSig">Clear</button>
+            </div>
+            <label class="check check--dark"><input type="checkbox" name="public" checked /><span></span>Show my entry in the guestbook gallery</label>
+            <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+            <button class="btn btn--burgundy" type="submit">Sign the book <span class="arr">→</span></button>
+          </form>
+        </div>
+        <div class="gb-page gb-page--right">
+          <div class="gb-gallery" id="gbGallery"><p class="muted gb-empty">Be the first to sign.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CHAPTER VI · INVITATION CARD ============ -->
+    <section class="invite" id="invite">
+      <div class="inv-copy">
+        <span class="tc-num">Chapter VI</span>
+        <h2>Your Invitation</h2>
+        <p class="muted">A keepsake made just for you. Personalise it, sign it, then download, print or share.</p>
+        <label class="field"><span>Your name</span><input id="invName" maxlength="60" placeholder="e.g. Aunt Wanjiku" /></label>
+        <div class="inv-photo">
+          <label class="inv-avatar" id="invAvatar" tabindex="0" aria-label="Add your photo to the card">
+            <img id="invAvatarImg" alt="" hidden />
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <input type="file" accept="image/*" id="invPhoto" hidden />
+          </label>
+          <div><b>Add your photo</b><span>A portrait like your WhatsApp profile picture. It stays on your card only.</span><button type="button" class="link" id="invPhotoRm" hidden>Remove photo</button></div>
+        </div>
+        <p class="tpl-label">Choose the invitation theme colour you like</p>
+        <div class="tpl-pick" id="tplPick" role="radiogroup" aria-label="Invitation theme colour"></div>
+        <div class="inv-btns">
+          <button class="btn btn--ghost" id="invSign"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Sign it</button>
+          <button class="btn btn--ivory" id="invA5">Download A5 PDF</button>
+          <button class="btn btn--ghost" id="invA4">A4 PDF</button>
+          <button class="btn btn--ghost" id="invPrint">Print</button>
+          <button class="btn btn--ghost" id="invShare">Share</button>
+        </div>
+        <p class="fine" id="invRef"></p>
+      </div>
+      <div class="inv-preview"><div class="inv-card" id="invCard"><canvas id="invCanvas"></canvas></div></div>
+    </section>
+
+    <!-- ============ SHARE ============ -->
+    <section class="share" id="share">
+      <h3>Pass it on.</h3>
+      <p class="muted">Invite someone who should be part of this. Edit the message however you like.</p>
+      <textarea id="shareText" rows="3"></textarea>
+      <div class="share-btns">
+        <a class="btn btn--wa" id="shareWa" target="_blank" rel="noopener">Share on WhatsApp</a>
+        <button class="btn btn--ghost" id="shareCopy">Copy link</button>
+        <button class="btn btn--ghost" id="shareNative" hidden>More…</button>
+      </div>
+    </section>
+
+    <!-- ============ FINALE / CREDITS ============ -->
+    <footer class="finale">
+      <div class="credits" id="credits">
+        <p class="cr-fin">Fin.</p>
+        <p class="cr-quote" data-bind="texts.finale"></p>
+        <dl>
+          <dt>A story by</dt><dd><span data-bind="couple.partnerA"></span> &amp; <span data-bind="couple.partnerB"></span></dd>
+          <dt>Starring</dt><dd>Family, friends &amp; you</dd>
+          <dt>Filmed on location</dt><dd data-bind="occasion.venue"></dd>
+          <dt>Coming soon</dt><dd>The wedding</dd>
+        </dl>
+        <p class="cr-tbc">To be continued…</p>
+        <div class="cr-mono">TNC</div>
+        <p class="cr-small">© <span id="yr"></span> The Next Chapter · <a href="admin/" class="link">Admin</a></p>
+      </div>
+    </footer>
+  </main>
+
+  <!-- ============ MODALS ============ -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-x" data-close aria-label="Close">×</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="swipe-hint" id="swipeHint" aria-hidden="true"><span>Keep scrolling</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></div>
+  <canvas id="confetti" aria-hidden="true"></canvas>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+  <script type="module" src="assets/js/site.js"></script>
+</body>
+</html>

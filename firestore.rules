@@ -1,0 +1,148 @@
+rules_version = '2';
+
+// THE NEXT CHAPTER: Firestore security rules
+// Visitors (no account) may only CREATE well-formed submissions and READ public content.
+// Nothing a visitor writes can mark money as received, a gift as received, or a message as approved.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function d() { return request.resource.data; }
+    function only(keys) { return d().keys().hasOnly(keys); }
+    function str(k, max) { return !(k in d()) || (d()[k] is string && d()[k].size() <= max); }
+    function stamped() { return d().at == request.time; }
+    function phoneOk() { return !('phone' in d()) || d().phone == '' || (d().phone is string && d().phone.matches('^254[17][0-9]{8}$')); }
+    function lockPath() { return /databases/$(database)/documents/config/lock; }
+
+    // ---------- public content ----------
+    match /settings/{id}           { allow read: if true; allow write: if isAdmin(); }
+    match /public/{id}             { allow read: if true; allow write: if isAdmin(); }
+    match /media/{id}              { allow read: if true; allow write: if isAdmin(); }
+    match /gifts/{id}              { allow read: if resource.data.active == true || isAdmin(); allow write: if isAdmin(); }
+    match /contributionStatus/{id} { allow get: if true; allow list, write: if isAdmin(); }
+
+    // ---------- admin bootstrap: the first account to claim becomes owner, then it locks ----------
+    match /config/lock {
+      allow read: if true; // only reveals whether setup has been done
+      allow create: if signedIn() && !exists(lockPath())
+        && d().by == request.auth.uid
+        && existsAfter(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow update, delete: if false;
+    }
+    match /admins/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create: if isAdmin() || (
+        signedIn() && request.auth.uid == uid && d().role == 'owner'
+        && !exists(lockPath()) && existsAfter(lockPath()) && getAfter(lockPath()).data.by == uid);
+      allow update, delete: if isAdmin() && resource.data.role != 'owner';
+    }
+
+    // ---------- visitor analytics ----------
+    match /visits/{id} {
+      allow create: if only(['vid', 'at', 'lastAt', 'ref', 'device', 'invite', 'agreed', 'sections', 'participated'])
+        && stamped() && d().agreed == false && d().participated == false && d().sections.size() == 0
+        && str('ref', 200) && str('invite', 60) && str('vid', 30) && str('device', 10);
+      allow update: if d().diff(resource.data).affectedKeys().hasOnly(['agreed', 'sections', 'participated', 'lastAt'])
+        && d().sections is list && d().sections.size() <= 30 && d().agreed is bool && d().participated is bool;
+      allow read, delete: if isAdmin();
+    }
+    match /activity/{id} {
+      allow create: if isAdmin() || (only(['type', 'label', 'vid', 'at']) && stamped() && str('type', 30) && str('label', 200) && str('vid', 30));
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ---------- money ----------
+    // Visitors may only record a PENDING manual-payment intent. Only admins / the server confirm payments.
+    match /contributions/{id} {
+      allow create: if isAdmin() || (
+        only(['amount', 'name', 'phone', 'anonymous', 'ref', 'vid', 'status', 'method', 'at'])
+        && stamped() && d().status == 'PENDING' && d().method == 'MANUAL'
+        && d().amount is int && d().amount >= 10 && d().amount <= 1000000
+        && d().anonymous is bool && str('name', 80) && str('ref', 20) && str('vid', 30) && phoneOk());
+      allow read, update, delete: if isAdmin();
+    }
+    match /pledges/{id} {
+      allow create: if isAdmin() || (
+        only(['amount', 'name', 'phone', 'date', 'consent', 'reminderId', 'ref', 'vid', 'status', 'reminderStatus', 'at'])
+        && stamped() && d().status == 'PENDING' && d().reminderStatus in ['SCHEDULED', 'NONE']
+        && d().amount is int && d().amount >= 10 && d().amount <= 10000000
+        && d().date is string && d().date.size() == 10 && d().consent is bool
+        && str('name', 80) && str('ref', 20) && str('reminderId', 40) && phoneOk());
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ---------- reminders (consent-based; anyone holding the link can opt out) ----------
+    match /reminders/{id} {
+      allow create: if isAdmin() || (
+        only(['kind', 'refId', 'giftName', 'name', 'phone', 'date', 'consent', 'status', 'vid', 'ref', 'at'])
+        && stamped() && d().status == 'SCHEDULED' && d().consent == true && d().kind in ['pledge', 'gift']
+        && d().phone is string && d().phone.size() == 12 && phoneOk()
+        && d().date is string && d().date.size() == 10
+        && str('giftName', 120) && str('name', 80) && str('refId', 40));
+      allow update: if isAdmin() || (
+        d().diff(resource.data).affectedKeys().hasOnly(['status', 'optOutAt'])
+        && d().status == 'OPTED_OUT' && resource.data.status in ['SCHEDULED', 'SENT']);
+      allow read, delete: if isAdmin();
+    }
+
+    // ---------- gifts ----------
+    match /giftReveals/{id} {
+      allow create: if only(['giftId', 'giftName', 'number', 'vid', 'at']) && stamped() && d().number is int && str('giftName', 120) && str('giftId', 40);
+      allow read, update, delete: if isAdmin();
+    }
+    match /giftOffers/{id} {
+      allow create: if isAdmin() || (
+        only(['type', 'giftId', 'giftName', 'description', 'photo', 'message', 'name', 'phone', 'arrangement', 'location', 'date', 'status', 'vid', 'ref', 'at'])
+        && stamped() && d().type in ['suggested', 'custom', 'collection']
+        && d().status in ['OFFERED', 'COLLECTION_REQUESTED']
+        && str('giftName', 120) && str('description', 600) && str('message', 600) && str('name', 80)
+        && str('arrangement', 60) && str('location', 160) && str('date', 10) && str('photo', 400000) && phoneOk());
+      allow read, update, delete: if isAdmin();
+    }
+    match /requests/{id} {
+      allow create: if isAdmin() || (
+        only(['kind', 'name', 'phone', 'bestTime', 'giftName', 'status', 'vid', 'ref', 'at'])
+        && stamped() && d().kind == 'call' && d().status == 'OPEN'
+        && d().name is string && d().name.size() > 0 && str('name', 80) && str('bestTime', 80) && str('giftName', 120)
+        && d().phone is string && d().phone.size() == 12 && phoneOk());
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ---------- wisdom & guestbook (moderated) ----------
+    match /wisdom/{id} {
+      allow read: if (resource.data.status == 'APPROVED' && resource.data.public == true) || isAdmin();
+      allow create: if only(['name', 'message', 'category', 'public', 'status', 'vid', 'ref', 'at'])
+        && stamped() && d().status == 'PENDING' && d().public is bool
+        && d().message is string && d().message.size() > 0 && d().message.size() <= 1500
+        && str('name', 80) && str('category', 60);
+      allow update, delete: if isAdmin();
+    }
+    match /guestbook/{id} {
+      allow read: if (resource.data.status == 'APPROVED' && resource.data.public == true) || isAdmin();
+      allow create: if only(['name', 'message', 'signature', 'public', 'status', 'vid', 'ref', 'at'])
+        && stamped() && d().status == 'PENDING' && d().public is bool
+        && d().name is string && d().name.size() > 0 && str('name', 80) && str('message', 500)
+        && d().signature is string && d().signature.size() <= 300000;
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- keepsakes ----------
+    match /invitations/{id} {
+      allow get: if true;
+      allow create: if isAdmin() || (only(['ref', 'recipient', 'template', 'signature', 'guestPhoto', 'vid', 'at']) && stamped()
+        && d().ref == id && str('recipient', 60) && str('template', 20) && str('signature', 300000) && str('guestPhoto', 300000));
+      allow list, update, delete: if isAdmin();
+    }
+    match /thankyous/{id} {
+      allow get: if true;
+      allow create: if isAdmin() || (only(['ref', 'name', 'category', 'message', 'source', 'vid', 'at']) && stamped()
+        && str('name', 60) && str('category', 20) && str('message', 500) && str('source', 20));
+      allow list, update, delete: if isAdmin();
+    }
+
+    // everything else: closed
+    match /{document=**} { allow read, write: if false; }
+  }
+}

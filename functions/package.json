@@ -1,0 +1,11 @@
+{
+  "name": "tnc-functions",
+  "description": "The Next Chapter: M-Pesa, stats & reminders",
+  "main": "index.js",
+  "engines": { "node": "22" },
+  "private": true,
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.0"
+  }
+}

@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Setup · The Next Chapter</title>
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/admin.css" />
+  <style>
+    body { min-height: 100vh; }
+    .s-top { background: var(--black); color: var(--ivory); padding: 14px 22px; display: flex; align-items: center; gap: 12px; }
+    .s-top b { display: block; letter-spacing: .06em; } .s-top small { color: rgba(255,252,239,.6); font-size: .78rem; }
+    .s-top a { margin-left: auto; color: var(--ivory); font-size: .85rem; font-weight: 600; text-decoration: none; opacity: .8; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 30px 16px 70px; }
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; counter-reset: st; }
+    .steps span { counter-increment: st; display: flex; align-items: center; gap: .5rem; padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid var(--line); font-size: .8rem; font-weight: 700; color: var(--ink-3); }
+    .steps span::before { content: counter(st); width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #f0ebe2; font-size: .72rem; }
+    .steps span.on { border-color: var(--burgundy); color: var(--burgundy); background: #fbeff1; }
+    .steps span.on::before { background: var(--burgundy); color: #fff; }
+    .steps span.ok { color: var(--ok); border-color: #bfdccf; background: var(--ok-bg); }
+    .steps span.ok::before { content: '\2713'; background: var(--ok); color: #fff; }
+    .card h2 { font-size: 1.45rem; font-weight: 600; margin-bottom: .3rem; }
+    .lead { color: var(--ink-2); margin: 0 0 1.2rem; }
+    .msg { display: none; padding: .8rem 1rem; border-radius: 10px; font-size: .88rem; font-weight: 600; margin-top: 1rem; }
+    .msg.on { display: block; } .msg.err { background: var(--bad-bg); color: var(--bad); } .msg.ok { background: var(--ok-bg); color: var(--ok); } .msg.info { background: var(--info-bg); color: var(--info); }
+    .acts { display: flex; gap: .6rem; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-top: 1.4rem; }
+    .check-list { list-style: none; padding: 0; margin: 0 0 1rem; display: grid; gap: .6rem; }
+    .check-list li { display: flex; gap: .7rem; align-items: flex-start; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-size: .9rem; }
+    .check-list .dot { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #f0ebe2; color: var(--ink-3); font-size: .75rem; font-weight: 700; }
+    .check-list li.ok .dot { background: var(--ok); color: #fff; } .check-list li.bad .dot { background: var(--bad); color: #fff; } .check-list li.wait .dot { animation: pulse 1.2s infinite; }
+    .check-list small { display: block; color: var(--ink-2); font-weight: 500; }
+    .check-list ol { margin: .4rem 0 0; padding-left: 1.1rem; color: var(--ink-2); font-size: .85rem; display: grid; gap: .25rem; }
+    .check-list ol li { display: list-item; padding: 0; border: 0; background: none; border-radius: 0; font-size: .85rem; }
+    .check-list code { font-size: .78rem; background: #f3ece0; padding: .1em .4em; border-radius: 5px; }
+    .done-hero { text-align: center; padding: 1rem 0; }
+    .done-hero .script { font-size: 3rem; color: var(--burgundy); line-height: 1; }
+    .meter { height: 6px; border-radius: 99px; background: #f0ebe2; overflow: hidden; margin-top: .3rem; } .meter i { display: block; height: 100%; width: 0; background: var(--bad); transition: width .3s, background .3s; }
+    .pw-row { position: relative; } .pw-row button { position: absolute; right: 8px; top: 31px; border: 0; background: none; color: var(--ink-2); font-size: .78rem; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <header class="s-top"><span class="logo-coin logo-coin--sm">TNC</span><span><b>The Next Chapter</b><small>First-time setup</small></span><a href="../admin/">Admin sign in →</a></header>
+  <main class="wrap">
+    <div class="steps"><span id="s1">Connection</span><span id="s2">Owner account</span><span id="s3">Couple &amp; event</span><span id="s4">Done</span></div>
+
+    <!-- STEP 1 -->
+    <section class="card" id="v1">
+      <h2>Let's get you set up</h2>
+      <p class="lead">This takes about two minutes. First, we check that the website can talk to your Firebase project.</p>
+      <ul class="check-list">
+        <li id="c-db" class="wait"><span class="dot">1</span><div><b>Database (Firestore)</b><small>Checking…</small></div></li>
+        <li id="c-auth" class="wait"><span class="dot">2</span><div><b>Admin sign-in (Email/Password)</b><small>Checked when the owner account is created.</small></div></li>
+        <li id="c-owner" class="wait"><span class="dot">3</span><div><b>Owner account</b><small>Checking…</small></div></li>
+      </ul>
+      <div class="acts"><button class="b b--ghost" id="recheck">Check again</button><button class="b b--primary" id="go1" disabled>Continue</button></div>
+    </section>
+
+    <!-- STEP 2 -->
+    <section class="card" id="v2" hidden>
+      <h2>Create the owner account</h2>
+      <p class="lead">This is the main admin login. The first account created here becomes the <b>owner</b>, and after that sign-up locks. Other admins can be added later from the dashboard.</p>
+      <form id="f2" autocomplete="on">
+        <label class="f"><span>Full name</span><input name="name" required maxlength="80" placeholder="e.g. Mesh" /></label>
+        <label class="f"><span>Email</span><input type="email" name="email" required autocomplete="username" /></label>
+        <div class="row">
+          <label class="f pw-row"><span>Password</span><input type="password" name="pw" required minlength="8" autocomplete="new-password" /><button type="button" data-show="pw">Show</button><div class="meter"><i id="pwMeter"></i></div></label>
+          <label class="f"><span>Confirm password</span><input type="password" name="pw2" required minlength="8" autocomplete="new-password" /></label>
+        </div>
+        <div class="acts"><button type="button" class="b b--ghost" data-back="1">Back</button><button class="b b--primary" type="submit" id="go2">Create owner account</button></div>
+      </form>
+      <form id="f2b" hidden>
+        <p class="lead" style="margin-top:0">Already created an account here? Sign in to continue setup.</p>
+        <label class="f"><span>Email</span><input type="email" name="email" required autocomplete="username" /></label>
+        <label class="f"><span>Password</span><input type="password" name="pw" required autocomplete="current-password" /></label>
+        <div class="acts"><button type="button" class="lnk" id="toCreate">Create a new account instead</button><button class="b b--primary" type="submit">Sign in and continue</button></div>
+      </form>
+      <p style="margin:1rem 0 0"><button class="lnk" id="toSignin">I already created my account, sign in instead</button></p>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="card" id="v3" hidden>
+      <h2>The couple &amp; the occasion</h2>
+      <p class="lead">These details appear across the site and on every invitation. You can change everything later in <b>Content &amp; settings</b>.</p>
+      <form id="f3">
+        <div class="row"><label class="f"><span>Partner one</span><input name="a" required maxlength="40" /></label><label class="f"><span>Partner two</span><input name="b" required maxlength="40" /></label></div>
+        <div class="row"><label class="f"><span>Occasion title</span><input name="title" required maxlength="80" /></label><label class="f"><span>Seal / coin monogram</span><input name="mono" maxlength="3" required /><small>Engraved on the loading coin and the wax seal.</small></label></div>
+        <div class="row"><label class="f"><span>Date &amp; time</span><input type="datetime-local" name="date" required /></label><label class="f"><span>Venue</span><input name="venue" required maxlength="120" /></label></div>
+        <div class="row"><label class="f"><span>Financial target (KES)</span><input type="number" name="target" min="0" step="1000" required /></label><label class="f"><span>M-Pesa Paybill / Till <em>(optional)</em></span><input name="paybill" maxlength="20" placeholder="Used if automatic STK is unavailable" /></label></div>
+        <label class="tog"><input type="checkbox" name="seed" checked /> Load the starter gift suggestions (cooker, cookware, TV…) for the numbers game</label>
+        <div class="acts"><span class="muted small" id="who"></span><button class="b b--primary" type="submit" id="go3">Save and finish</button></div>
+      </form>
+    </section>
+
+    <!-- STEP 4 -->
+    <section class="card" id="v4" hidden>
+      <div class="done-hero"><div class="script">All set!</div><p class="lead" id="doneLine" style="margin-top:.6rem">The Next Chapter is ready.</p></div>
+      <ul class="check-list">
+        <li class="ok"><span class="dot">✓</span><div><b>Owner account created</b><small id="doneEmail"></small></div></li>
+        <li class="ok"><span class="dot">✓</span><div><b>Website content saved</b><small>Edit photos, story and milestones in Content &amp; settings.</small></div></li>
+        <li><span class="dot">→</span><div><b>Next: M-Pesa (optional)</b><small>Automatic STK Push needs the Blaze plan and Daraja keys stored as server secrets. See README.md, section 2.</small></div></li>
+      </ul>
+      <div class="acts"><a class="b b--ghost" href="../" target="_blank" rel="noopener">View the website</a><a class="b b--primary" href="../admin/">Open the admin dashboard →</a></div>
+    </section>
+
+    <div class="msg" id="msg" role="alert"></div>
+  </main>
+
+  <script type="module">
+    import { app, db, doc, getDoc, setDoc, getDocs, collection, writeBatch, serverTimestamp, withTimeout } from '../assets/js/fb.js';
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js';
+    import { DEFAULT_SETTINGS, DEFAULT_GIFTS, mergeDeep } from '../assets/js/defaults.js';
+
+    const auth = getAuth(app);
+    const $ = (s) => document.querySelector(s);
+    const RESUME = 'tnc.setupResume';
+    let settings = structuredClone(DEFAULT_SETTINGS), lockExists = false;
+
+    function say(t, k = 'err') { const m = $('#msg'); m.textContent = t || ''; m.className = 'msg' + (t ? ' on ' + k : ''); if (t) m.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+    function step(i) { [1, 2, 3, 4].forEach((k) => { $('#v' + k).hidden = k !== i; $('#s' + k).className = k < i ? 'ok' : k === i ? 'on' : ''; }); say(''); scrollTo({ top: 0, behavior: 'smooth' }); }
+    function item(id, state, text) { const li = $('#' + id); li.className = state; li.querySelector('.dot').textContent = state === 'ok' ? '✓' : state === 'bad' ? '!' : li.querySelector('.dot').textContent; if (text != null) li.querySelector('small').innerHTML = text; }
+    const errText = (e) => ({
+      'auth/email-already-in-use': 'That email already has an account. Use "sign in instead" below.',
+      'auth/weak-password': 'Please use a stronger password (at least 8 characters).',
+      'auth/invalid-email': 'That email address looks incorrect.',
+      'auth/operation-not-allowed': 'Email/Password sign-in is not enabled yet. In Firebase Console open Authentication → Sign-in method → Email/Password → Enable, then try again.',
+      'auth/configuration-not-found': 'Firebase Authentication is not set up yet. In Firebase Console open Authentication → Get started → enable Email/Password, then try again.',
+      'auth/invalid-credential': 'Email or password is incorrect.',
+      'auth/too-many-requests': 'Too many attempts. Please wait a few minutes.',
+      'permission-denied': 'Setup is locked because an owner already exists. Sign in on the admin page instead.',
+    }[e.code] || e.message);
+
+    // ---------- STEP 1: connection ----------
+    async function checkConnection() {
+      say(''); $('#go1').disabled = true;
+      item('c-db', 'wait', 'Checking…'); item('c-owner', 'wait', 'Checking…');
+      try {
+        const lock = await withTimeout(getDoc(doc(db, 'config', 'lock')), 7000, 'database');
+        lockExists = lock.exists();
+        item('c-db', 'ok', 'Connected to project <b>mesh-9b2f3</b>.');
+        try { const s = await getDoc(doc(db, 'settings', 'site')); if (s.exists()) settings = mergeDeep(DEFAULT_SETTINGS, s.data()); } catch { /* fine */ }
+        if (lockExists) {
+          item('c-owner', 'ok', 'An owner already exists, so setup is locked. Sign in to the admin dashboard, or sign in below to finish setup.');
+          $('#go1').textContent = settings.setupComplete ? 'Go to admin sign in' : 'Sign in to finish setup';
+        } else {
+          item('c-owner', '', 'No owner yet. You will create it in the next step.');
+          $('#go1').textContent = 'Continue';
+        }
+        $('#go1').disabled = false;
+      } catch (e) {
+        item('c-db', 'bad', `The database is not reachable yet.
+          <ol><li>Open <a href="https://console.firebase.google.com/project/mesh-9b2f3/firestore" target="_blank" rel="noopener">Firebase Console → Firestore Database</a> and click <b>Create database</b> (production mode).</li>
+          <li>Deploy the rules: <code>firebase deploy --only firestore:rules,firestore:indexes</code></li>
+          <li>Come back here and press <b>Check again</b>.</li></ol>`);
+        item('c-owner', '', 'Waiting for the database.');
+      }
+    }
+    $('#recheck').onclick = checkConnection;
+    $('#go1').onclick = () => {
+      if (lockExists && settings.setupComplete) { location.href = '../admin/'; return; }
+      step(2);
+      if (lockExists) { $('#f2').hidden = true; $('#f2b').hidden = false; $('#toSignin').hidden = true; }
+    };
+
+    // ---------- STEP 2: owner ----------
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-back]'); if (b) step(+b.dataset.back);
+      const sh = e.target.closest('[data-show]'); if (sh) { const i = sh.parentElement.querySelector('input'); i.type = i.type === 'password' ? 'text' : 'password'; sh.textContent = i.type === 'password' ? 'Show' : 'Hide'; }
+    });
+    $('#f2 [name=pw]').addEventListener('input', (e) => {
+      const v = e.target.value; let sc = 0; if (v.length >= 8) sc++; if (v.length >= 12) sc++; if (/[A-Z]/.test(v) && /[a-z]/.test(v)) sc++; if (/\d/.test(v)) sc++; if (/[^A-Za-z0-9]/.test(v)) sc++;
+      const m = $('#pwMeter'); m.style.width = (sc / 5) * 100 + '%'; m.style.background = sc < 3 ? 'var(--bad)' : sc < 4 ? 'var(--warn)' : 'var(--ok)';
+    });
+    $('#toSignin').onclick = () => { $('#f2').hidden = true; $('#f2b').hidden = false; $('#toSignin').hidden = true; };
+    $('#toCreate').onclick = () => { $('#f2').hidden = false; $('#f2b').hidden = true; $('#toSignin').hidden = false; };
+
+    async function claim(user, name) {
+      const b = writeBatch(db);
+      b.set(doc(db, 'admins', user.uid), { email: user.email, name: name || '', role: 'owner', at: serverTimestamp() });
+      b.set(doc(db, 'config', 'lock'), { by: user.uid, at: serverTimestamp() });
+      await b.commit();
+    }
+    async function isAdmin(uid) { try { return (await getDoc(doc(db, 'admins', uid))).exists(); } catch { return false; } }
+
+    $('#f2').addEventListener('submit', async (e) => {
+      e.preventDefault(); const f = new FormData(e.target);
+      if (f.get('pw') !== f.get('pw2')) return say('The two passwords do not match.');
+      const btn = $('#go2'); btn.disabled = true; btn.textContent = 'Creating…';
+      try {
+        const lock = await getDoc(doc(db, 'config', 'lock'));
+        if (lock.exists()) throw { code: 'permission-denied' };
+        const cred = await createUserWithEmailAndPassword(auth, f.get('email').trim(), f.get('pw'));
+        item('c-auth', 'ok', 'Email/Password sign-in works.');
+        if (f.get('name')) await updateProfile(cred.user, { displayName: f.get('name').trim() }).catch(() => {});
+        await claim(cred.user, f.get('name'));
+        localStorage.setItem(RESUME, JSON.stringify({ email: cred.user.email }));
+        toStep3(cred.user);
+      } catch (err) { say(errText(err)); }
+      btn.disabled = false; btn.textContent = 'Create owner account';
+    });
+    $('#f2b').addEventListener('submit', async (e) => {
+      e.preventDefault(); const f = new FormData(e.target);
+      try {
+        const cred = await signInWithEmailAndPassword(auth, f.get('email').trim(), f.get('pw'));
+        if (!(await isAdmin(cred.user.uid))) {
+          const lock = await getDoc(doc(db, 'config', 'lock'));
+          if (lock.exists()) return say('This account is not an admin. Ask the owner to add you from Content & settings → Admins.');
+          await claim(cred.user, cred.user.displayName);
+        }
+        toStep3(cred.user);
+      } catch (err) { say(errText(err)); }
+    });
+
+    // ---------- STEP 3: basics ----------
+    function toStep3(user) {
+      step(3);
+      $('#who').textContent = 'Signed in as ' + user.email;
+      const f = $('#f3'), c = settings.couple, o = settings.occasion;
+      f.a.value = c.partnerA; f.b.value = c.partnerB; f.title.value = o.title; f.mono.value = settings.brand.monogram;
+      f.date.value = String(o.date).slice(0, 16); f.venue.value = o.venue; f.target.value = settings.finance.target; f.paybill.value = settings.finance.paybill || '';
+      f.a.focus();
+    }
+    $('#f3').addEventListener('submit', async (e) => {
+      e.preventDefault(); const f = e.target; const btn = $('#go3'); btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const base = structuredClone(settings);
+        base.couple.partnerA = f.a.value.trim(); base.couple.partnerB = f.b.value.trim();
+        base.brand.monogram = f.mono.value.trim().toUpperCase().slice(0, 3) || 'M';
+        base.occasion.title = f.title.value.trim(); base.occasion.date = f.date.value; base.occasion.venue = f.venue.value.trim();
+        base.finance.target = Math.max(0, Math.round(+f.target.value || 0)); base.finance.paybill = f.paybill.value.trim();
+        base.setupComplete = true;
+        await setDoc(doc(db, 'settings', 'site'), base);
+        if (f.seed.checked) {
+          const existing = await getDocs(collection(db, 'gifts'));
+          if (existing.empty) { const b = writeBatch(db); DEFAULT_GIFTS.forEach((g, i) => b.set(doc(collection(db, 'gifts')), { ...g, order: i + 1, active: true, at: serverTimestamp() })); await b.commit(); }
+        }
+        await setDoc(doc(db, 'public', 'stats'), { confirmedTotal: 0, confirmedCount: 0, pledgedOutstanding: 0, pledgeCount: 0, giftsReceived: 0, giftOffersOpen: 0, wisdomApproved: 0, guestbookCount: 0, participants: 0, target: base.finance.target, updatedAt: serverTimestamp() }, { merge: true });
+        localStorage.removeItem(RESUME);
+        $('#doneLine').textContent = `${base.couple.partnerA} & ${base.couple.partnerB}: The Next Chapter is ready.`;
+        $('#doneEmail').textContent = auth.currentUser?.email || '';
+        step(4);
+      } catch (err) { say(errText(err)); }
+      btn.disabled = false; btn.textContent = 'Save and finish';
+    });
+
+    // ---------- resume ----------
+    step(1);
+    onAuthStateChanged(auth, async (u) => {
+      if (!u || $('#v1').hidden) return; // only auto-resume from the first screen
+      if (await isAdmin(u.uid)) {
+        try { const s = await getDoc(doc(db, 'settings', 'site')); if (s.exists()) settings = mergeDeep(DEFAULT_SETTINGS, s.data()); } catch { /* fine */ }
+        if (!settings.setupComplete) { say('Welcome back. Let\'s finish setting up.', 'info'); toStep3(u); }
+      }
+    });
+    checkConnection();
+  </script>
+</body>
+</html>

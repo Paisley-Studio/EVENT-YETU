@@ -1,0 +1,26 @@
+{
+  "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
+  "functions": [{ "source": "functions", "codebase": "default", "ignore": ["node_modules", ".git", "*.log", ".env.example"] }],
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json", "firestore.rules", "firestore.indexes.json", ".firebaserc", "README.md", "**/.*",
+      "**/node_modules/**", "functions/**", "PARISH-YETU-CMS/**", "VHR/**", "Images/**", "*.pdf"
+    ],
+    "cleanUrls": true,
+    "rewrites": [
+      { "source": "/api/stkPush", "function": { "functionId": "stkPush", "region": "europe-west1" } },
+      { "source": "/api/mpesaCallback", "function": { "functionId": "mpesaCallback", "region": "europe-west1" } }
+    ],
+    "headers": [
+      { "source": "**/*.@(jpg|jpeg|png|svg|webp)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }] },
+      { "source": "**/*.@(js|css)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }] },
+      { "source": "/admin/**", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }, { "key": "Cache-Control", "value": "no-cache" }] },
+      { "source": "**", "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
+      ] }
+    ]
+  }
+}

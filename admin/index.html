@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>TNC Admin</title>
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/admin.css" />
+</head>
+<body>
+  <!-- ============ AUTH ============ -->
+  <section id="auth" class="auth" hidden>
+    <div class="auth-art"><img src="../assets/img/art-held-hands.jpg" alt="" /><div class="auth-quote"><span class="script">The Next Chapter</span><p>Every gift, every blessing, every promise. All in one place.</p></div></div>
+    <div class="auth-panel">
+      <div class="auth-box">
+        <div class="logo-coin">TNC</div>
+        <h1>Welcome back</h1>
+        <p class="muted">Sign in to manage The Next Chapter.</p>
+        <form id="loginForm">
+          <label class="f"><span>Email</span><input type="email" name="email" required autocomplete="username" /></label>
+          <label class="f"><span>Password</span><input type="password" name="password" required minlength="6" autocomplete="current-password" /></label>
+          <button class="b b--primary b--block" type="submit">Sign in</button>
+          <p class="err" id="authErr" role="alert"></p>
+        </form>
+        <div class="auth-links">
+          <button class="lnk" id="resetPw">Forgot password?</button>
+          <a class="lnk" href="../setup/">First time? Run setup</a>
+        </div>
+        <form id="claimForm" hidden>
+          <p class="note">The <b>first</b> account created here becomes the owner. After that, sign-up is locked and only existing admins can add others.</p>
+          <label class="f"><span>Email</span><input type="email" name="email" required /></label>
+          <label class="f"><span>Password</span><input type="password" name="password" required minlength="8" autocomplete="new-password" /></label>
+          <button class="b b--dark b--block" type="submit">Create owner account</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section id="denied" class="auth" hidden>
+    <div class="auth-panel" style="grid-column:1/-1">
+      <div class="auth-box">
+        <div class="logo-coin">TNC</div>
+        <h1>Not authorised yet</h1>
+        <p class="muted">You're signed in, but this account isn't an admin. Ask an existing admin to add this ID under <b>Settings → Admins</b>:</p>
+        <code class="uid" id="myUid"></code>
+        <div class="auth-links"><button class="b b--ghost" id="deniedClaim" hidden>Claim owner access</button><button class="b b--ghost" data-logout>Sign out</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ APP ============ -->
+  <div id="app" class="app" hidden>
+    <aside class="side" id="side">
+      <button class="side-x" id="sideClose" aria-label="Close menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      <a class="side-logo" href="../" target="_blank" rel="noopener"><span class="logo-coin logo-coin--sm">TNC</span><span><b>The Next Chapter</b><small>Admin · view site ↗</small></span></a>
+      <nav class="side-nav" id="sideNav">
+        <button data-view="overview" class="is-on"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3zm10 8h8V11h-8zM3 21h8v-6H3zm10-18v6h8V3z"/></svg>Overview</button>
+        <button data-view="finance"><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 10h18M7 15h3"/></svg>Finance<i class="badge" data-badge="finance"></i></button>
+        <button data-view="gifts"><svg viewBox="0 0 24 24"><path d="M4 11h16v10H4zM2 7h20v4H2zM12 7v14M12 7c-2-4-6-4-6-1s6 1 6 1zm0 0c2-4 6-4 6-1s-6 1-6 1z"/></svg>Gifts<i class="badge" data-badge="gifts"></i></button>
+        <button data-view="reminders"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4"/></svg>Reminders<i class="badge" data-badge="reminders"></i></button>
+        <button data-view="wisdom"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Wisdom<i class="badge" data-badge="wisdom"></i></button>
+        <button data-view="guestbook"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20V3H6.5A2.5 2.5 0 004 5.5zM4 19.5A2.5 2.5 0 006.5 22H20v-5"/></svg>Guestbook<i class="badge" data-badge="guestbook"></i></button>
+        <button data-view="invitations"><svg viewBox="0 0 24 24"><path d="M3 7l9 6 9-6M3 7v10h18V7M3 7l9-4 9 4"/></svg>Invitations</button>
+        <button data-view="thankyou"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 00-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 000-7.8z"/></svg>Thank-you notes</button>
+        <button data-view="content"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Content & settings</button>
+        <button data-view="numbers"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Public numbers</button>
+        <button data-view="reports"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M8 13h8M8 17h5"/></svg>Reports</button>
+        <button data-view="activity"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity log</button>
+      </nav>
+      <div class="side-foot"><span id="whoami"></span><button class="lnk" data-logout>Sign out</button></div>
+    </aside>
+    <div class="main">
+      <header class="top">
+        <button class="burger" id="burger" aria-label="Menu"><i></i><i></i><i></i></button>
+        <h2 id="viewTitle">Overview</h2>
+        <div class="top-r"><span class="live"><i></i>Live</span><button class="b b--ghost b--sm" id="syncStats" title="Recalculate the public statistics shown on the site">Sync public stats</button></div>
+      </header>
+      <div class="views" id="views"></div>
+    </div>
+  </div>
+
+  <div class="side-backdrop" id="sideBackdrop" hidden></div>
+  <div class="loading" id="boot"><div class="logo-coin spin">TNC</div></div>
+
+  <div class="dlg" id="dlg" hidden><div class="dlg-bg" data-x></div><div class="dlg-box"><button class="dlg-x" data-x aria-label="Close">×</button><div id="dlgBody"></div></div></div>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script type="module" src="../assets/js/admin.js"></script>
+</body>
+</html>

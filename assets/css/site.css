@@ -752,10 +752,10 @@ p { margin: 0 0 1em; }
 @media (max-width: 640px) { .stat:nth-child(even):last-child { grid-column: auto; } }
 
 /* ---------- bottom credit bar (Keypole Technologies) ---------- */
-.kp-bar { position: relative; z-index: 2; background: var(--black); border-top: 1px solid var(--ivory-08); padding: 28px var(--gutter) calc(22px + env(safe-area-inset-bottom)); display: grid; justify-items: center; gap: 14px; text-align: center; }
+.kp-bar { position: relative; z-index: 2; background: var(--black); border-top: 1px solid var(--ivory-08); padding: 28px var(--gutter) calc(9vh + 20px + env(safe-area-inset-bottom)); /* clears the closing letterbox bar */ display: grid; justify-items: center; gap: 14px; text-align: center; }
 .kp-about { max-width: 640px; margin: 0; font-size: .74rem; line-height: 1.6; color: var(--ivory-50); }
 .kp-about strong { color: var(--ivory-70); font-weight: 600; }
-.kp-credit { appearance: none; background: transparent; border: 1px solid var(--ivory-15); color: var(--ivory-70); font: inherit; font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; padding: .7em 1.3em; border-radius: 99px; cursor: pointer; transition: color .3s, border-color .3s, background .3s; }
+.kp-credit { max-width: 100%; white-space: nowrap; line-height: 1.2; appearance: none; background: transparent; border: 1px solid var(--ivory-15); color: var(--ivory-70); font: inherit; font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; padding: .7em 1.3em; border-radius: 99px; cursor: pointer; transition: color .3s, border-color .3s, background .3s; }
 .kp-credit b { color: var(--ivory); font-weight: 600; }
 .kp-credit:hover, .kp-credit:focus-visible { border-color: var(--rose); background: rgba(109, 1, 26, .25); color: var(--ivory); outline: none; }
 .kp-modal { text-align: center; }
@@ -773,3 +773,16 @@ p { margin: 0 0 1em; }
 .kp-phones b { font-variant-numeric: tabular-nums; font-weight: 600; }
 .kp-modal .kp-close { margin-top: 1rem; }
 @media (max-width: 380px) { .kp-phones { grid-template-columns: 1fr; } }
+
+/* ---------- small phones: slimmer buttons ---------- */
+@media (max-width: 480px) {
+  .kp-bar { gap: 10px; }
+  .kp-about { font-size: .7rem; }
+  .kp-credit { font-size: .6rem; letter-spacing: .08em; padding: .6em 1em; }
+  .modal-actions { gap: .5rem; }
+  .modal-actions .btn { flex: 1 1 calc(50% - .5rem); min-width: 0; padding: .7em 1em; font-size: .84rem; line-height: 1.25; text-align: center; }
+  .modal-actions .btn:only-child, .modal-actions .btn:first-child:nth-last-child(odd) { flex-basis: 100%; }
+  .kp-modal .btn--lg { padding: .8em 1.2em; font-size: .9rem; }
+  .kp-phones a { padding: .65rem .5rem; }
+}
+@media (max-width: 340px) { .kp-credit { font-size: .55rem; letter-spacing: .04em; } }

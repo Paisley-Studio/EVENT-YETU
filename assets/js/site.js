@@ -891,6 +891,11 @@ function initGive() {
   });
 }
 
+// The payment API runs on Firebase. When the site is served from elsewhere (e.g. Vercel on the custom domain),
+// /api/* doesn't exist there, so call Firebase Hosting directly (CORS allows our domains).
+const API_HOST = 'https://mesh-9b2f3.web.app';
+const api = (path) => (/^https?:/.test(path) || /\.(web\.app|firebaseapp\.com)$/.test(location.hostname) || location.hostname === 'localhost' ? path : API_HOST + path);
+
 async function startPayment(p, btn) {
   const fin = S.settings.finance;
   if (fin.paystackEnabled) return paystackPayment(p, btn);
@@ -899,7 +904,7 @@ async function startPayment(p, btn) {
   if (fin.mpesaEnabled && fin.stkEndpoint) {
     try {
       const { email, ...stk } = p;
-      const r = await fetch(fin.stkEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(stk) });
+      const r = await fetch(api(fin.stkEndpoint), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(stk) });
       const ct = r.headers.get('content-type') || '';
       res = ct.includes('json') ? await r.json() : null;
       if (!r.ok && res) { busy(btn, false); return toast(res.error || 'M-Pesa request failed. Please try again.', true); }
@@ -922,13 +927,13 @@ async function paystackPayment(p, btn) {
   busy(btn, true);
   let res = null;
   try {
-    const [r] = await Promise.all([fetch('/api/paystackInit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) }), loadPaystack().catch(() => null)]);
+    const [r] = await Promise.all([fetch(api('/api/paystackInit'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) }), loadPaystack().catch(() => null)]);
     res = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
     if (!r.ok) { busy(btn, false); if (res?.error) return toast(res.error, true); return manualPayment(p); }
   } catch { busy(btn, false); return manualPayment(p); }
   busy(btn, false);
   if (!res?.ok || !res.accessCode) return manualPayment(p);
-  const verify = () => fetch('/api/paystackVerify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: res.id }) }).catch(() => {});
+  const verify = () => fetch(api('/api/paystackVerify'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: res.id }) }).catch(() => {});
   let Pop = null; try { Pop = await loadPaystack(); } catch { Pop = null; }
   if (!Pop) { window.location.href = res.url; return; } // popup script blocked: use Paystack's hosted page
   awaitPayment(res.id, p, 'paystack');

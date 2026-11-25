@@ -955,16 +955,21 @@ ACT.savePaystack = async () => {
   const b = writeBatch(db);
   b.set(doc(db, 'secrets', 'paystack'), { secretKey: sec, by: A.user.uid, at: serverTimestamp() });
   b.set(doc(db, 'paymentConfig', 'paystack'), { publicKey: pub, secretHint: `sk_${mode}_••••${sec.slice(-4)}`, mode, by: A.user.uid, byEmail: A.user.email || '', at: serverTimestamp() });
+  b.set(doc(db, 'settings', 'site'), { finance: { paystackEnabled: true } }, { merge: true }); // saving keys switches Paystack on
   try { await b.commit(); } catch (e) { return toast('Could not save keys: ' + e.message, true); }
+  A.settings.finance.paystackEnabled = true;
   $('#psSec').value = ''; $('#psPub').value = '';
-  toast('Paystack keys saved ✓ The secret key is now hidden'); log(`Paystack ${mode} keys updated`);
+  const tog = $('[data-path="finance.paystackEnabled"]'); if (tog) tog.checked = true;
+  toast('Paystack keys saved and switched on ✓ The secret key is now hidden'); log(`Paystack ${mode} keys updated`);
   loadPaystackStatus();
 };
 ACT.rmPaystack = async () => {
   if (!isOwner()) return toast('Only the owner can change payment keys', true);
   if (!(await confirmDlg('Remove the Paystack keys? Online Paystack payments will stop until new keys are added.', 'Remove keys', true))) return;
   const b = writeBatch(db); b.delete(doc(db, 'secrets', 'paystack')); b.delete(doc(db, 'paymentConfig', 'paystack'));
+  b.set(doc(db, 'settings', 'site'), { finance: { paystackEnabled: false } }, { merge: true });
   try { await b.commit(); } catch (e) { return toast('Could not remove keys: ' + e.message, true); }
+  A.settings.finance.paystackEnabled = false; const tog = $('[data-path="finance.paystackEnabled"]'); if (tog) tog.checked = false;
   toast('Paystack keys removed'); log('Paystack keys removed'); loadPaystackStatus();
 };
 ACT.toggleSetup = async ({ close }) => {

@@ -4,6 +4,10 @@
  *  stkPush         POST /api/stkPush        → starts an M-Pesa STK Push (Daraja)
  *  mpesaCallback   POST /api/mpesaCallback  → Safaricom result callback (token-protected, idempotent)
  *  verifyPending   every 5 min              → STK Query for payments whose callback never arrived
+ *  paystackInit    POST /api/paystackInit   → opens a Paystack checkout (card / M-Pesa via Paystack)
+ *  paystackVerify  POST /api/paystackVerify → server-side check after the popup reports success
+ *  paystackWebhook POST /api/paystackWebhook→ Paystack events (HMAC-signed with the secret key)
+ *  Paystack keys are entered by the owner in Admin → Content & settings → Finance & payments.
  *  syncStats       on writes                → recomputes public/stats (confirmed vs pledged kept separate)
  *  sendReminders   daily 09:00 EAT          → sends consented reminders by SMS (Africa's Talking) if configured
  *
@@ -57,6 +61,43 @@ async function darajaToken() {
 }
 function password(stamp) { return Buffer.from(`${MPESA_SHORTCODE.value()}${MPESA_PASSKEY.value()}${stamp}`).toString('base64'); }
 
+// Shared abuse limits for anything that starts a payment. Returns an error message, or null when allowed.
+async function rateLimit(req, phone) {
+  // one request per phone per 60s, max 5 per IP per 10 min
+  const since = admin.firestore.Timestamp.fromMillis(Date.now() - 60 * 1000);
+  const recent = await db.collection('contributions').where('phone', '==', phone).where('at', '>', since).limit(1).get();
+  if (!recent.empty) return 'A request was just sent to this number. Please check your phone or wait a minute.';
+  const ip = String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
+  const ipRef = db.doc(`ratelimits/${Buffer.from(ip || 'unknown').toString('hex').slice(0, 60)}`);
+  const ok = await db.runTransaction(async (t) => {
+    const s = await t.get(ipRef); const now = Date.now();
+    const hits = ((s.exists && s.data().hits) || []).filter((x) => now - x < 10 * 60 * 1000);
+    if (hits.length >= 5) return false;
+    t.set(ipRef, { hits: [...hits, now] }); return true;
+  });
+  if (!ok) return 'Too many attempts. Please try again in a few minutes.';
+
+  // caps that can't be dodged by faking IP headers: max 5 requests per phone per day, max 30 per minute site-wide
+  const day = admin.firestore.Timestamp.fromMillis(Date.now() - 24 * 3600 * 1000);
+  const perPhone = await db.collection('contributions').where('phone', '==', phone).where('at', '>', day).limit(5).get();
+  if (perPhone.size >= 5) return 'This number has had several payment requests today. Please try again tomorrow or pay via Paybill.';
+  const globalOk = await db.runTransaction(async (t) => {
+    const g = db.doc('ratelimits/_global'); const s = await t.get(g); const now = Date.now();
+    const hits = ((s.exists && s.data().hits) || []).filter((x) => now - x < 60 * 1000);
+    if (hits.length >= 30) return false;
+    t.set(g, { hits: [...hits, now] }); return true;
+  });
+  if (!globalOk) return 'Payments are busy right now. Please try again in a minute.';
+  return null;
+}
+const checkOrigin = (req, res) => {
+  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return false; }
+  const origin = req.headers.origin || '';
+  if (origin && !ALLOWED_ORIGINS.includes(origin)) { res.status(403).json({ error: 'Forbidden' }); return false; }
+  if (!String(req.headers['content-type'] || '').includes('application/json')) { res.status(415).json({ error: 'Unsupported request' }); return false; }
+  return true;
+};
+
 // ---------------------------------------------------------------------------
 // STK PUSH
 // ---------------------------------------------------------------------------
@@ -75,31 +116,8 @@ exports.stkPush = onRequest({ secrets: MPESA_SECRETS, cors: ALLOWED_ORIGINS }, a
     const settings = (await db.doc('settings/site').get()).data() || {};
     if (settings.finance && settings.finance.mpesaEnabled === false) return res.status(503).json({ error: 'M-Pesa payments are paused right now.' });
 
-    // rate limit: one request per phone per 60s, max 5 per IP per 10 min
-    const since = admin.firestore.Timestamp.fromMillis(Date.now() - 60 * 1000);
-    const recent = await db.collection('contributions').where('phone', '==', phone).where('at', '>', since).limit(1).get();
-    if (!recent.empty) return res.status(429).json({ error: 'A request was just sent to this number. Please check your phone or wait a minute.' });
-    const ip = String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
-    const ipRef = db.doc(`ratelimits/${Buffer.from(ip || 'unknown').toString('hex').slice(0, 60)}`);
-    const ok = await db.runTransaction(async (t) => {
-      const s = await t.get(ipRef); const now = Date.now();
-      const hits = ((s.exists && s.data().hits) || []).filter((x) => now - x < 10 * 60 * 1000);
-      if (hits.length >= 5) return false;
-      t.set(ipRef, { hits: [...hits, now] }); return true;
-    });
-    if (!ok) return res.status(429).json({ error: 'Too many attempts. Please try again in a few minutes.' });
-
-    // caps that can't be dodged by faking IP headers: max 5 prompts per phone per day, max 30 per minute site-wide
-    const day = admin.firestore.Timestamp.fromMillis(Date.now() - 24 * 3600 * 1000);
-    const perPhone = await db.collection('contributions').where('phone', '==', phone).where('at', '>', day).limit(5).get();
-    if (perPhone.size >= 5) return res.status(429).json({ error: 'This number has had several payment requests today. Please try again tomorrow or pay via Paybill.' });
-    const globalOk = await db.runTransaction(async (t) => {
-      const g = db.doc('ratelimits/_global'); const s = await t.get(g); const now = Date.now();
-      const hits = ((s.exists && s.data().hits) || []).filter((x) => now - x < 60 * 1000);
-      if (hits.length >= 30) return false;
-      t.set(g, { hits: [...hits, now] }); return true;
-    });
-    if (!globalOk) return res.status(429).json({ error: 'Payments are busy right now. Please try again in a minute.' });
+    const limited = await rateLimit(req, phone);
+    if (limited) return res.status(429).json({ error: limited });
 
     const docRef = db.collection('contributions').doc();
     const cleanRef = String(ref).replace(/[^A-Z0-9-]/gi, '').slice(0, 20) || `TNC-${docRef.id.slice(0, 6).toUpperCase()}`;
@@ -209,6 +227,136 @@ exports.verifyPending = onSchedule({ schedule: 'every 5 minutes', secrets: MPESA
     // STK Query does not return the receipt number; a success here is recorded and the receipt may be added by the admin.
     await settle(d.ref, c, { code, desc: out.ResultDesc, receipt: '', amount: c.amount });
   }
+});
+
+// ---------------------------------------------------------------------------
+// PAYSTACK: keys are entered by the owner in the admin dashboard.
+//   secrets/paystack       { secretKey }  write-only from the browser (rules: read never), read here via Admin SDK
+//   paymentConfig/paystack { publicKey, secretHint, mode }  admin-readable status shown in the dashboard
+// ---------------------------------------------------------------------------
+const PAYSTACK_API = 'https://api.paystack.co';
+let psCache = { key: '', exp: 0 };
+async function paystackKey() {
+  if (psCache.key && psCache.exp > Date.now()) return psCache.key;
+  const s = await db.doc('secrets/paystack').get();
+  const key = (s.exists && s.get('secretKey')) || '';
+  psCache = { key, exp: Date.now() + 60 * 1000 };
+  return key;
+}
+async function paystack(path, opts = {}) {
+  const key = await paystackKey();
+  if (!key) throw new Error('Paystack is not configured');
+  const r = await fetch(`${PAYSTACK_API}${path}`, { ...opts, headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', ...(opts.headers || {}) } });
+  const out = await r.json().catch(() => ({}));
+  return { ok: r.ok && out.status === true, out };
+}
+
+// Ask Paystack (never the browser) what happened, then settle the contribution once.
+async function paystackSettle(ref) {
+  const snap = await ref.get();
+  if (!snap.exists) return 'missing';
+  const c = snap.data();
+  if (c.method !== 'PAYSTACK' || c.status !== 'PENDING' || !c.paystackRef) return 'not-pending';
+  const { out } = await paystack(`/transaction/verify/${encodeURIComponent(c.paystackRef)}`);
+  const t = out.data || {};
+  if (t.status === 'success') {
+    if (t.currency && t.currency !== 'KES') return settle(ref, c, { code: 1, desc: `Unexpected currency ${t.currency}` });
+    return settle(ref, c, { code: 0, desc: t.gateway_response || 'Confirmed', receipt: t.receipt_number || t.reference, amount: Math.round(Number(t.amount) / 100) });
+  }
+  if (t.status === 'failed' || t.status === 'reversed') return settle(ref, c, { code: 1, desc: t.gateway_response || 'Payment failed' });
+  // abandoned / ongoing / pending: give the payer up to an hour before closing it
+  const age = Date.now() - (c.at?.toMillis?.() || Date.now());
+  if (age > 60 * 60 * 1000) return settle(ref, c, { code: 1, desc: 'Payment was not completed' });
+  return 'pending';
+}
+
+exports.paystackInit = onRequest({ cors: ALLOWED_ORIGINS }, async (req, res) => {
+  if (!checkOrigin(req, res)) return;
+  try {
+    const { amount: rawAmount, phone: rawPhone, email: rawEmail = '', name = '', anonymous = false, vid = '', ref = '' } = (req.body && typeof req.body === 'object') ? req.body : {};
+    const amount = Math.round(Number(rawAmount));
+    const phone = normalizePhone(rawPhone);
+    const email = String(rawEmail).trim().toLowerCase();
+    if (!Number.isFinite(amount) || amount < 10 || amount > 250000) return res.status(400).json({ error: 'Please enter an amount between KES 10 and 250,000.' });
+    if (!phone) return res.status(400).json({ error: 'Please enter a valid phone number.' });
+    if (email && !/^[^\s@<>]{1,64}@[^\s@<>]{1,190}\.[a-z]{2,}$/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address, or leave it empty.' });
+
+    const settings = (await db.doc('settings/site').get()).data() || {};
+    if (!settings.finance || settings.finance.paystackEnabled !== true) return res.status(503).json({ error: 'Online payments are paused right now.' });
+    if (!(await paystackKey())) return res.status(503).json({ error: 'Online payments are not set up yet.' });
+
+    const limited = await rateLimit(req, phone);
+    if (limited) return res.status(429).json({ error: limited });
+
+    const docRef = db.collection('contributions').doc();
+    const cleanRef = String(ref).replace(/[^A-Z0-9-]/gi, '').slice(0, 20) || `TNC-${docRef.id.slice(0, 6).toUpperCase()}`;
+    const paystackRef = `TNC-${docRef.id}`;
+    const cleanVid = String(vid).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 30);
+    await docRef.set({
+      amount, phone, name: String(name).replace(/[<>]/g, '').slice(0, 80), anonymous: anonymous === true, vid: cleanVid, ref: cleanRef,
+      ...(email ? { email } : {}), paystackRef, status: 'PENDING', method: 'PAYSTACK', at: FieldValue.serverTimestamp(),
+    });
+    await db.doc(`contributionStatus/${docRef.id}`).set({ status: 'PENDING', amount, ref: cleanRef, at: FieldValue.serverTimestamp() });
+
+    // Paystack requires an email; when the guest gives none we use a per-payment placeholder on our own domain.
+    const host = (PUBLIC_BASE_URL.value() || `https://${req.headers.host}`).replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    const { ok, out } = await paystack('/transaction/initialize', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: email || `${paystackRef.toLowerCase()}@${host}`, amount: amount * 100, currency: 'KES', reference: paystackRef,
+        metadata: { contributionId: docRef.id, ref: cleanRef, phone, custom_fields: [{ display_name: 'Reference', variable_name: 'ref', value: cleanRef }] },
+      }),
+    });
+    if (!ok || !out.data?.access_code) {
+      const msg = out.message || 'Paystack could not start the payment.';
+      await docRef.update({ status: 'FAILED', resultDesc: msg });
+      await db.doc(`contributionStatus/${docRef.id}`).set({ status: 'FAILED', resultDesc: msg }, { merge: true });
+      logger.warn('Paystack initialize rejected', out);
+      return res.status(502).json({ error: 'Online payment could not start. Please try again shortly.' });
+    }
+    await db.collection('activity').add({ type: 'stk', label: `Paystack checkout opened: KES ${amount}`, vid: cleanVid, at: FieldValue.serverTimestamp() });
+    return res.json({ ok: true, id: docRef.id, accessCode: out.data.access_code, url: out.data.authorization_url });
+  } catch (e) {
+    logger.error('paystackInit', e);
+    return res.status(500).json({ error: 'Payment service unavailable. Please try again shortly.' });
+  }
+});
+
+// Called by the browser right after the Paystack popup reports success. The browser's word is never trusted:
+// we look the transaction up with Paystack ourselves.
+exports.paystackVerify = onRequest({ cors: ALLOWED_ORIGINS }, async (req, res) => {
+  if (!checkOrigin(req, res)) return;
+  try {
+    const id = String((req.body || {}).id || '');
+    if (!/^[A-Za-z0-9]{15,40}$/.test(id)) return res.status(400).json({ error: 'Bad request' });
+    const outcome = await paystackSettle(db.doc(`contributions/${id}`));
+    return res.json({ ok: true, outcome });
+  } catch (e) { logger.error('paystackVerify', e); return res.status(500).json({ error: 'Could not verify yet' }); }
+});
+
+// Paystack webhook: signature-checked with the secret key, then re-verified via the API.
+exports.paystackWebhook = onRequest(async (req, res) => {
+  try {
+    const key = await paystackKey();
+    const sig = String(req.headers['x-paystack-signature'] || '');
+    const expected = key && req.rawBody ? crypto.createHmac('sha512', key).update(req.rawBody).digest('hex') : '';
+    if (req.method !== 'POST' || !expected || !safeEqual(sig, expected)) { logger.warn('Paystack webhook with bad signature'); return res.sendStatus(401); }
+    const ev = req.body || {};
+    const reference = ev.data && ev.data.reference;
+    if (reference && /^charge\./.test(ev.event || '')) {
+      const q = await db.collection('contributions').where('paystackRef', '==', String(reference)).limit(1).get();
+      if (!q.empty) logger.info('Paystack webhook settled', { id: q.docs[0].id, outcome: await paystackSettle(q.docs[0].ref) });
+    }
+    return res.sendStatus(200);
+  } catch (e) { logger.error('paystackWebhook', e); return res.sendStatus(200); }
+});
+
+// Safety net for payments where neither the popup nor the webhook reported back.
+exports.verifyPaystackPending = onSchedule({ schedule: 'every 10 minutes' }, async () => {
+  if (!(await paystackKey())) return;
+  const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - 3 * 60 * 1000);
+  const q = await db.collection('contributions').where('status', '==', 'PENDING').where('method', '==', 'PAYSTACK').where('at', '<', cutoff).limit(20).get();
+  for (const d of q.docs) { try { await paystackSettle(d.ref); } catch (e) { logger.warn('verifyPaystackPending', d.id, e.message); } }
 });
 
 // ---------------------------------------------------------------------------

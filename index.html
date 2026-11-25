@@ -366,7 +366,8 @@
           <div class="chips" id="amountChips"></div>
           <label class="field"><span>Amount (KES)</span><input type="number" name="amount" min="10" max="250000" step="1" inputmode="numeric" placeholder="Custom amount" required /></label>
           <label class="field"><span>Your name <em>(optional)</em></span><input type="text" name="name" maxlength="80" autocomplete="name" /></label>
-          <label class="field"><span>M-Pesa phone number</span><input type="tel" name="phone" placeholder="07XX XXX XXX" autocomplete="tel" required /></label>
+          <label class="field"><span id="phoneLbl">M-Pesa phone number</span><input type="tel" name="phone" placeholder="07XX XXX XXX" autocomplete="tel" required /></label>
+          <label class="field" id="emailField" hidden><span>Email <em>(optional, for your receipt)</em></span><input type="email" name="email" maxlength="120" autocomplete="email" /></label>
           <label class="check"><input type="checkbox" name="anonymous" /><span></span>Keep my contribution anonymous</label>
           <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
           <button class="btn btn--burgundy btn--lg btn--block" type="submit">Send M-Pesa request <span class="arr">→</span></button>

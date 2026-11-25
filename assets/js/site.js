@@ -829,6 +829,13 @@ function initGive() {
     $$('.panel').forEach((p) => p.classList.toggle('is-on', p.dataset.panel === t.dataset.tab));
   });
   $('#formLater [name=date]').min = tomorrow();
+  if (S.settings.finance.paystackEnabled) {
+    $('#phoneLbl').textContent = 'Phone number';
+    $('#emailField').hidden = false;
+    const f = $('#formNow');
+    f.querySelector('[type=submit]').innerHTML = 'Continue to secure payment <span class="arr">→</span>';
+    f.querySelector('.fine').textContent = 'Pay securely with M-Pesa or card through Paystack. Nothing is charged until you confirm.';
+  }
 
   $('#formNow').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -840,7 +847,9 @@ function initGive() {
     const phone = normalizePhone(fd.get('phone'));
     if (!phone) return bad(form, 'phone', 'Please enter a valid M-Pesa number, e.g. 0712 345 678');
     if (!rateOk('stk', 20000)) return toast('Please wait a few seconds before trying again');
-    const payload = { amount, phone, name: String(fd.get('name') || '').trim().slice(0, 80), anonymous: !!fd.get('anonymous'), vid: S.vid, ref: makeRef('TNC') };
+    const email = String(fd.get('email') || '').trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) return bad(form, 'email', 'Please enter a valid email, or leave it empty');
+    const payload = { amount, phone, email, name: String(fd.get('name') || '').trim().slice(0, 80), anonymous: !!fd.get('anonymous'), vid: S.vid, ref: makeRef('TNC') };
     track('contribute_start', { amount });
     await startPayment(payload, form.querySelector('[type=submit]'));
   });
@@ -884,11 +893,13 @@ function initGive() {
 
 async function startPayment(p, btn) {
   const fin = S.settings.finance;
+  if (fin.paystackEnabled) return paystackPayment(p, btn);
   busy(btn, true);
   let res = null;
   if (fin.mpesaEnabled && fin.stkEndpoint) {
     try {
-      const r = await fetch(fin.stkEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) });
+      const { email, ...stk } = p;
+      const r = await fetch(fin.stkEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(stk) });
       const ct = r.headers.get('content-type') || '';
       res = ct.includes('json') ? await r.json() : null;
       if (!r.ok && res) { busy(btn, false); return toast(res.error || 'M-Pesa request failed. Please try again.', true); }
@@ -899,8 +910,42 @@ async function startPayment(p, btn) {
   return manualPayment(p);
 }
 
-function awaitPayment(id, p) {
-  openModal(`<div class="center" id="payBox"><div class="phone-anim"><span>M-PESA</span></div>
+// ---- Paystack checkout (keys are configured by the owner in the admin; the secret never reaches the browser) ----
+let paystackJs = null;
+const loadPaystack = () => (paystackJs ??= new Promise((ok, fail) => {
+  const s = document.createElement('script'); s.src = 'https://js.paystack.co/v2/inline.js'; s.async = true;
+  s.onload = () => (window.PaystackPop ? ok(window.PaystackPop) : fail(new Error('Paystack unavailable')));
+  s.onerror = () => { paystackJs = null; fail(new Error('Paystack unavailable')); };
+  document.head.appendChild(s);
+}));
+async function paystackPayment(p, btn) {
+  busy(btn, true);
+  let res = null;
+  try {
+    const [r] = await Promise.all([fetch('/api/paystackInit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) }), loadPaystack().catch(() => null)]);
+    res = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
+    if (!r.ok) { busy(btn, false); if (res?.error) return toast(res.error, true); return manualPayment(p); }
+  } catch { busy(btn, false); return manualPayment(p); }
+  busy(btn, false);
+  if (!res?.ok || !res.accessCode) return manualPayment(p);
+  const verify = () => fetch('/api/paystackVerify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: res.id }) }).catch(() => {});
+  let Pop = null; try { Pop = await loadPaystack(); } catch { Pop = null; }
+  if (!Pop) { window.location.href = res.url; return; } // popup script blocked: use Paystack's hosted page
+  awaitPayment(res.id, p, 'paystack');
+  new Pop().resumeTransaction(res.accessCode, {
+    onSuccess: () => verify(),
+    onCancel: () => { verify(); const box = $('#payBox .fine'); if (box) box.textContent = 'Checkout closed. If you completed the payment it will confirm shortly; otherwise nothing was charged.'; },
+    onError: () => toast('Payment window could not load. Please try again.', true),
+  });
+}
+
+function awaitPayment(id, p, via = 'mpesa') {
+  openModal(via === 'paystack'
+    ? `<div class="center" id="payBox"><div class="phone-anim"><span>PAY</span></div>
+    <h3 style="padding:0">Complete your payment</h3>
+    <p class="muted">Finish paying <b>${money(p.amount)}</b> in the secure Paystack window.</p>
+    <p class="fine">Waiting for confirmation…</p></div>`
+    : `<div class="center" id="payBox"><div class="phone-anim"><span>M-PESA</span></div>
     <h3 style="padding:0">Check your phone</h3>
     <p class="muted">We've sent a request for <b>${money(p.amount)}</b> to <b>${p.phone.replace(/^254(\d{3})\d{3}(\d{3})$/, '0$1•••$2')}</b>. Enter your M-Pesa PIN to complete.</p>
     <p class="fine">Waiting for confirmation from Safaricom…</p></div>`);
@@ -918,7 +963,7 @@ function awaitPayment(id, p) {
   setTimeout(() => {
     if (done) return; unsub();
     const box = $('#payBox'); if (!box) return;
-    box.querySelector('.fine').textContent = "We haven't heard back yet. If you completed the payment, it will reflect as soon as Safaricom confirms. Thank you!";
+    box.querySelector('.fine').textContent = "We haven't heard back yet. If you completed the payment, it will reflect as soon as it is confirmed. Thank you!";
   }, 120000);
 }
 
@@ -928,7 +973,7 @@ function paymentSuccess(d, p) {
   $('#payBox').innerHTML = `<div class="big-check"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
     <h3 style="padding:0">Asante sana${name ? ', ' + esc(name) : ''}!</h3>
     <p class="muted">Your contribution of <b>${money(d.amount)}</b> is confirmed.</p>
-    <dl class="kv"><dt>M-Pesa receipt</dt><dd>${esc(d.mpesaRef || '')}</dd><dt>Reference</dt><dd>${esc(d.ref || p.ref)}</dd></dl>
+    <dl class="kv"><dt>Receipt</dt><dd>${esc(d.mpesaRef || '')}</dd><dt>Reference</dt><dd>${esc(d.ref || p.ref)}</dd></dl>
     <div class="modal-actions" style="justify-content:center"><button class="btn btn--ghost" id="dlReceipt">Transaction acknowledgement (PDF)</button><button class="btn btn--ivory" id="tyNext">Thank-you note</button></div>`;
   confetti();
   $('#dlReceipt').addEventListener('click', async () => {

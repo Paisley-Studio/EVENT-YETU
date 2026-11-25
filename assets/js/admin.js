@@ -342,7 +342,7 @@ VIEWS.finance = () => {
         <select data-f="txStatus"><option value="">All statuses</option>${opts(STATUS.contribution, sf)}</select>
         <span class="muted small">${rows.length} shown · ${money(sum)} confirmed</span><span class="sp"></span>
         <button class="b b--ghost" data-act="goto" data-v="numbers">Edit public contributor count</button><button class="b b--ghost" data-act="exportTx">Export CSV</button><button class="b b--primary" data-act="recordPay">+ Add contribution</button></div>
-        ${table(['Date', 'Reference', 'Contributor', 'Phone', 'Amount', 'Method', 'M-Pesa receipt', 'Status', ''], rows.map((c) => `<tr>
+        ${table(['Date', 'Reference', 'Contributor', 'Phone', 'Amount', 'Method', 'Receipt', 'Status', ''], rows.map((c) => `<tr>
           <td>${fmtDate(c.at, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td><td class="mono">${esc(c.ref)}</td>
           <td>${esc(nameOf(c))}${c.anonymous && c.name ? `<br><small class="muted">(${esc(c.name)})</small>` : ''}</td><td class="mono">${esc(maskPhone(c.phone))}</td>
           <td class="num">${money(c.amount)}</td><td>${esc(c.method || 'STK')}</td><td class="mono">${esc(c.mpesaRef || '-')}${c.resultDesc && c.status === 'FAILED' ? `<br><small class="muted">${esc(c.resultDesc)}</small>` : ''}</td><td>${pill(c.status)}</td>
@@ -418,7 +418,7 @@ ACT.editTx = ({ id }) => {
   const c = find('contributions', id);
   const b = dlg(`<h3>Edit contribution</h3><p class="muted">Ref <span class="mono">${esc(c.ref || '-')}</span>. Changes apply to the records and the public totals.</p>
     <div class="row"><label class="f"><span>Name</span><input id="eName" value="${esc(c.name || '')}" maxlength="80" /></label><label class="f"><span>Phone</span><input id="ePhone" value="${esc(c.phone || '')}" /></label></div>
-    <div class="row"><label class="f"><span>Amount (KES)</span><input id="eAmt" type="number" min="1" value="${+c.amount || 0}" /></label><label class="f"><span>Method</span><select id="eMethod">${opts(['STK', 'MANUAL', 'MPESA_DIRECT', 'CASH', 'BANK', 'OTHER'], c.method || 'STK')}</select></label></div>
+    <div class="row"><label class="f"><span>Amount (KES)</span><input id="eAmt" type="number" min="1" value="${+c.amount || 0}" /></label><label class="f"><span>Method</span><select id="eMethod">${opts(['STK', 'PAYSTACK', 'MANUAL', 'MPESA_DIRECT', 'CASH', 'BANK', 'OTHER'], c.method || 'STK')}</select></label></div>
     <div class="row"><label class="f"><span>Receipt / transaction code</span><input id="eRef" class="mono" value="${esc(c.mpesaRef || '')}" /></label><label class="f"><span>Status</span><select id="eStatus">${opts(STATUS.contribution, c.status)}</select></label></div>
     <label class="tog"><input type="checkbox" id="eAnon" ${c.anonymous ? 'checked' : ''} /> Show as anonymous</label>
     <div class="toolbar"><button class="b b--bad" id="eDel">Delete</button><span class="sp"></span><button class="b b--ghost" data-x>Cancel</button><button class="b b--primary" id="eOk">Save changes</button></div>`);
@@ -821,7 +821,7 @@ function sigPad(c) {
 
 // ---------------- CONTENT & SETTINGS ----------------
 VIEWS.content = () => {
-  const st = subtabs('content', [['story', 'Couple & story'], ['gallery', 'Gallery'], ['occasion', 'Occasion'], ['finance', 'Finance & M-Pesa'], ['texts', 'Website text'], ['messages', 'Reminders & sharing'], ['brand', 'Brand'], ['admins', 'Admins & security']]);
+  const st = subtabs('content', [['story', 'Couple & story'], ['gallery', 'Gallery'], ['occasion', 'Occasion'], ['finance', 'Finance & payments'], ['texts', 'Website text'], ['messages', 'Reminders & sharing'], ['brand', 'Brand'], ['admins', 'Admins & security']]);
   const S = A.settings;
   const inp = (path, label, attrs = '') => `<label class="f"><span>${label}</span><input data-path="${path}" value="${esc(getPath(S, path) ?? '')}" ${attrs} /></label>`;
   const area = (path, label, rows = 3) => `<label class="f"><span>${label}</span><textarea data-path="${path}" rows="${rows}">${esc(getPath(S, path) ?? '')}</textarea></label>`;
@@ -844,7 +844,19 @@ VIEWS.content = () => {
       <p class="section-title">M-Pesa</p><label class="tog"><input type="checkbox" data-path="finance.mpesaEnabled" ${S.finance.mpesaEnabled ? 'checked' : ''} /> Enable automatic M-Pesa STK Push</label>
       ${inp('finance.stkEndpoint', 'STK Push endpoint', 'placeholder="/api/stkPush"')}<p class="muted small">Daraja credentials live only on the server (Cloud Function secrets), never here. See README.</p>
       <p class="section-title">Manual payment fallback</p><p class="muted small">Shown when the STK prompt is unavailable. Such payments stay <b>PENDING</b> until you verify them.</p>
-      <div class="row">${inp('finance.paybill', 'Paybill number')}${inp('finance.account', 'Account name')}${inp('finance.till', 'Or Till number')}</div>${save}</div>`;
+      <div class="row">${inp('finance.paybill', 'Paybill number')}${inp('finance.account', 'Account name')}${inp('finance.till', 'Or Till number')}</div>
+      <p class="section-title">Paystack</p><label class="tog"><input type="checkbox" data-path="finance.paystackEnabled" ${S.finance.paystackEnabled ? 'checked' : ''} /> Use Paystack checkout for "Contribute now" (card &amp; M-Pesa via Paystack), instead of the STK prompt</label>
+      <p class="muted small">Enter the keys in the Paystack keys card below. Click <b>Save changes</b> after you change this switch.</p>${save}</div>
+    <div class="card" style="margin-top:16px" id="psCard"><div class="card-h"><div><h3>Paystack keys</h3>
+        <p class="muted small">Paystack Dashboard → Settings → API Keys &amp; Webhooks. After you save, the secret key is stored where <b>no browser can read it back</b>, not even this dashboard. Only the payment server uses it. To change it, paste a new one.</p></div>
+        <span class="st" id="psState">Checking…</span></div>
+      <div id="psSaved" class="muted small" hidden></div>
+      ${isOwner() ? `<div class="row"><label class="f"><span>Public key</span><input id="psPub" class="mono" autocomplete="off" spellcheck="false" placeholder="pk_live_…" /></label>
+        <label class="f"><span>Secret key</span><input id="psSec" class="mono" type="password" autocomplete="new-password" spellcheck="false" placeholder="sk_live_…" /></label></div>
+        <div class="toolbar"><button class="b b--primary" data-act="savePaystack">Save keys</button><button class="b b--bad b--ghost" data-act="rmPaystack" id="psRm" hidden>Remove keys</button></div>`
+        : '<p class="muted small">Only the owner can set or change payment keys.</p>'}
+      <p class="section-title">Webhook URL</p><p class="muted small">In Paystack, under API Keys &amp; Webhooks, paste this as the <b>Webhook URL</b> so payments are confirmed even if the guest closes the page:</p>
+      <p class="mono small" style="user-select:all;word-break:break-all">${esc(location.origin)}/api/paystackWebhook</p></div>`;
   } else if (st.cur === 'texts') {
     html = `<div class="card"><p class="section-title">Five-minute agreement</p>${inp('texts.agreementTitle', 'Title')}${area('texts.agreementBody', 'Body', 2)}${inp('texts.agreementLabel', 'Agreement checkbox label')}
       <p class="section-title">Sections</p>${area('texts.participateIntro', 'Participation intro', 2)}${area('texts.impactIntro', 'Collective impact intro', 2)}${area('texts.guestbookIntro', 'Guestbook intro', 2)}${area('texts.finale', 'Closing credits line', 2)}${save}</div>`;
@@ -879,6 +891,7 @@ VIEWS.content = () => {
         try { toast('Uploading…'); const id = await uploadMedia(e.target.files[0], 1600); $(`input[type=hidden][data-path="${inp.dataset.photo}"]`).value = id; $(`[data-photo-prev="${inp.dataset.photo}"]`).src = await resolveMedia(id); toast('Uploaded. Click save to apply'); } catch (err) { toast(err.message, true); }
       }));
       $$('#galTiles img[data-src]').forEach(async (i) => { i.src = await resolveMedia(i.dataset.src); });
+      if ($('#psCard')) loadPaystackStatus();
       const ga = $('#galAdd');
       if (ga) ga.onchange = async (e) => {
         toast('Uploading photos…');
@@ -912,6 +925,47 @@ ACT.saveContent = async () => {
   A.settings = mergeDeep(A.settings, data);
   if (data.finance?.target != null) syncStats(false);
   toast('Saved. The website is updated ✓'); log('Website content updated');
+};
+// ---- Paystack keys: secret is write-only (see firestore.rules), we only ever display a masked hint ----
+async function loadPaystackStatus() {
+  const st = $('#psState'), saved = $('#psSaved'); if (!st) return;
+  try {
+    const s = await getDoc(doc(db, 'paymentConfig', 'paystack'));
+    if (!$('#psState')) return; // navigated away
+    if (!s.exists()) { st.className = 'st st--warn'; st.textContent = 'Not set'; saved.hidden = true; if ($('#psRm')) $('#psRm').hidden = true; return; }
+    const p = s.data();
+    st.className = `st st--${p.mode === 'live' ? 'ok' : 'warn'}`; st.textContent = p.mode === 'live' ? 'Live keys saved' : 'Test keys saved';
+    saved.hidden = false;
+    saved.innerHTML = `Public key: <span class="mono">${esc(p.publicKey)}</span><br>Secret key: <span class="mono">${esc(p.secretHint)}</span> (hidden)<br>Last changed ${esc(fmtDate(p.at))}${p.byEmail ? ` by ${esc(p.byEmail)}` : ''}`;
+    if ($('#psRm')) $('#psRm').hidden = false;
+    if ($('#psPub') && !$('#psPub').value) $('#psPub').placeholder = 'Leave empty to keep the saved key, or paste a new one';
+    if ($('#psSec')) $('#psSec').placeholder = 'Paste a new secret key to replace it';
+  } catch (e) { st.className = 'st st--bad'; st.textContent = 'Could not load'; }
+}
+ACT.savePaystack = async () => {
+  if (!isOwner()) return toast('Only the owner can change payment keys', true);
+  const pubIn = $('#psPub').value.trim(), sec = $('#psSec').value.trim();
+  let pub = pubIn;
+  if (!pub) { const cur = await getDoc(doc(db, 'paymentConfig', 'paystack')).catch(() => null); pub = cur?.exists() ? cur.data().publicKey : ''; }
+  if (!/^pk_(test|live)_[A-Za-z0-9]{20,100}$/.test(pub)) return toast('The public key should look like pk_live_… or pk_test_…', true);
+  if (!/^sk_(test|live)_[A-Za-z0-9]{20,100}$/.test(sec)) return toast('Paste the secret key (sk_live_… or sk_test_…). For security it must be entered every time you save.', true);
+  const mode = sec.startsWith('sk_live_') ? 'live' : 'test';
+  if (!pub.startsWith(`pk_${mode}_`)) return toast(`The keys don't match: one is a test key and the other a live key`, true);
+  if (mode === 'test' && !(await confirmDlg('These are TEST keys. Payments will not move real money. Save anyway?', 'Save test keys'))) return;
+  const b = writeBatch(db);
+  b.set(doc(db, 'secrets', 'paystack'), { secretKey: sec, by: A.user.uid, at: serverTimestamp() });
+  b.set(doc(db, 'paymentConfig', 'paystack'), { publicKey: pub, secretHint: `sk_${mode}_••••${sec.slice(-4)}`, mode, by: A.user.uid, byEmail: A.user.email || '', at: serverTimestamp() });
+  try { await b.commit(); } catch (e) { return toast('Could not save keys: ' + e.message, true); }
+  $('#psSec').value = ''; $('#psPub').value = '';
+  toast('Paystack keys saved ✓ The secret key is now hidden'); log(`Paystack ${mode} keys updated`);
+  loadPaystackStatus();
+};
+ACT.rmPaystack = async () => {
+  if (!isOwner()) return toast('Only the owner can change payment keys', true);
+  if (!(await confirmDlg('Remove the Paystack keys? Online Paystack payments will stop until new keys are added.', 'Remove keys', true))) return;
+  const b = writeBatch(db); b.delete(doc(db, 'secrets', 'paystack')); b.delete(doc(db, 'paymentConfig', 'paystack'));
+  try { await b.commit(); } catch (e) { return toast('Could not remove keys: ' + e.message, true); }
+  toast('Paystack keys removed'); log('Paystack keys removed'); loadPaystackStatus();
 };
 ACT.toggleSetup = async ({ close }) => {
   const closing = !!close;

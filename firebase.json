@@ -46,6 +46,27 @@
           "functionId": "mpesaCallback",
           "region": "europe-west1"
         }
+      },
+      {
+        "source": "/api/paystackInit",
+        "function": {
+          "functionId": "paystackInit",
+          "region": "europe-west1"
+        }
+      },
+      {
+        "source": "/api/paystackVerify",
+        "function": {
+          "functionId": "paystackVerify",
+          "region": "europe-west1"
+        }
+      },
+      {
+        "source": "/api/paystackWebhook",
+        "function": {
+          "functionId": "paystackWebhook",
+          "region": "europe-west1"
+        }
       }
     ],
     "headers": [

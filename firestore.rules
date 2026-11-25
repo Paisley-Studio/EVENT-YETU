@@ -53,6 +53,26 @@ service cloud.firestore {
       allow delete: if isOwner() && resource.data.role != 'owner';
     }
 
+    // ---------- payment provider keys ----------
+    // The secret key is WRITE-ONLY from any browser: nobody (not even admins) can read it back.
+    // Only Cloud Functions (Admin SDK, which bypasses rules) read it. Only the owner may set or replace it.
+    match /secrets/paystack {
+      allow read: if false;
+      allow create, update: if isOwner() && only(['secretKey', 'by', 'at'])
+        && d().secretKey is string && d().secretKey.matches('^sk_(test|live)_[A-Za-z0-9]{20,100}$')
+        && d().by == request.auth.uid && stamped();
+      allow delete: if isOwner();
+    }
+    // Non-secret status shown in the dashboard (public key + masked hint of the secret).
+    match /paymentConfig/paystack {
+      allow read: if isAdmin();
+      allow create, update: if isOwner() && only(['publicKey', 'secretHint', 'mode', 'by', 'byEmail', 'at'])
+        && d().publicKey is string && d().publicKey.matches('^pk_(test|live)_[A-Za-z0-9]{20,100}$')
+        && d().secretHint is string && d().secretHint.size() <= 40
+        && d().mode in ['test', 'live'] && d().by == request.auth.uid && str('byEmail', 120) && stamped();
+      allow delete: if isOwner();
+    }
+
     // ---------- visitor analytics ----------
     match /visits/{id} {
       allow create: if only(['vid', 'at', 'lastAt', 'ref', 'device', 'invite', 'agreed', 'sections', 'participated'])

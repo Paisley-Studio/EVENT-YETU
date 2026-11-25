@@ -226,3 +226,7 @@ td .acts { display: flex; gap: .35rem; flex-wrap: wrap; }
   body { background: #fff; }
 }
 td a { color: var(--rich); text-decoration: none; } td a:hover { text-decoration: underline; }
+
+/* small circling loader for busy admin buttons */
+.spin-sm { display: inline-block; width: .9em; height: .9em; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; vertical-align: -.12em; animation: spinSm .7s linear infinite; }
+@keyframes spinSm { to { transform: rotate(360deg); } }

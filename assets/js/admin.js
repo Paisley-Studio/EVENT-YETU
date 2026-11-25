@@ -956,7 +956,9 @@ ACT.savePaystack = async () => {
   b.set(doc(db, 'secrets', 'paystack'), { secretKey: sec, by: A.user.uid, at: serverTimestamp() });
   b.set(doc(db, 'paymentConfig', 'paystack'), { publicKey: pub, secretHint: `sk_${mode}_••••${sec.slice(-4)}`, mode, by: A.user.uid, byEmail: A.user.email || '', at: serverTimestamp() });
   b.set(doc(db, 'settings', 'site'), { finance: { paystackEnabled: true } }, { merge: true }); // saving keys switches Paystack on
-  try { await b.commit(); } catch (e) { return toast('Could not save keys: ' + e.message, true); }
+  const sb = $('[data-act="savePaystack"]'), sbT = sb?.textContent;
+  if (sb) { sb.disabled = true; sb.innerHTML = '<span class="spin-sm" aria-hidden="true"></span> Saving keys…'; }
+  try { await b.commit(); } catch (e) { return toast('Could not save keys: ' + e.message, true); } finally { if (sb) { sb.disabled = false; sb.textContent = sbT; } }
   A.settings.finance.paystackEnabled = true;
   $('#psSec').value = ''; $('#psPub').value = '';
   const tog = $('[data-path="finance.paystackEnabled"]'); if (tog) tog.checked = true;

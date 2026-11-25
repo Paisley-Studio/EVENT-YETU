@@ -261,6 +261,7 @@ async function paystackSettle(ref) {
   const t = out.data || {};
   if (t.status === 'success') {
     if (t.currency && t.currency !== 'KES') return settle(ref, c, { code: 1, desc: `Unexpected currency ${t.currency}` });
+    if (Math.round(Number(t.amount) / 100) < c.amount) logger.warn('Paystack paid less than requested', { id: ref.id, paid: t.amount, asked: c.amount });
     return settle(ref, c, { code: 0, desc: t.gateway_response || 'Confirmed', receipt: t.receipt_number || t.reference, amount: Math.round(Number(t.amount) / 100) });
   }
   if (t.status === 'failed' || t.status === 'reversed') return settle(ref, c, { code: 1, desc: t.gateway_response || 'Payment failed' });
@@ -303,8 +304,9 @@ exports.paystackInit = onRequest({ cors: ALLOWED_ORIGINS }, async (req, res) => 
     const { ok, out } = await paystack('/transaction/initialize', {
       method: 'POST',
       body: JSON.stringify({
-        email: email || `${paystackRef.toLowerCase()}@${host}`, amount: amount * 100, currency: 'KES', reference: paystackRef,
-        metadata: { contributionId: docRef.id, ref: cleanRef, phone, custom_fields: [{ display_name: 'Reference', variable_name: 'ref', value: cleanRef }] },
+        // per Paystack docs: amount is a string in the subunit (KES cents), metadata is stringified JSON
+        email: email || `${paystackRef.toLowerCase()}@${host}`, amount: String(amount * 100), currency: 'KES', reference: paystackRef,
+        metadata: JSON.stringify({ contributionId: docRef.id, ref: cleanRef, phone, custom_fields: [{ display_name: 'Reference', variable_name: 'ref', value: cleanRef }] }),
       }),
     });
     if (!ok || !out.data?.access_code) {

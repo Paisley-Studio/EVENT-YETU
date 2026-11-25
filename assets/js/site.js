@@ -418,51 +418,87 @@ function initScenes() {
 }
 
 // ---------------------------------------------------------------------------
-// 3D ORBIT: cards orbit in a tilted cylinder; scroll + drag + inertia
+// CURVED CAROUSEL: photos ride the inside of a curve (edges come closer), drifting on their own.
+// Drag/swipe sideways to browse, tap to view full size. No scroll pinning: scrolling moves on to the next chapter.
 // ---------------------------------------------------------------------------
 function initOrbit() {
-  const ring = $('#orbitRing'), stage = $('#orbitStage'), cards = $$('.orbit-card', ring);
-  if (!cards.length) return;
-  const n = cards.length, step = 360 / n;
-  const stageH = stage.getBoundingClientRect().height || innerHeight * 0.6;
-  const cw = Math.max(100, Math.min(innerWidth * 0.3, (stageH * 0.78) / 1.32, 230));
-  const radius = Math.max(260, (cw * 1.25 * n) / (2 * Math.PI));
-  const rnd = mulberry(7);
-  cards.forEach((c, i) => {
-    c.style.setProperty('--cw', cw + 'px');
-    const tiltZ = (rnd() - .5) * 14, y = (rnd() - .5) * 60;
-    c.style.transform = `rotateY(${i * step}deg) translateZ(${radius}px) translateY(${y}px) rotateZ(${tiltZ}deg)`;
-  });
-  const st = { scroll: 0, drag: 0, vel: 0, drift: 0, tilt: 14 };
-  ScrollTrigger.create({
-    trigger: '#gallery', start: 'top top', end: '+=160%', pin: true, scrub: true,
-    onUpdate: (s) => { st.scroll = s.progress * 360; st.tilt = 16 - s.progress * 26; },
-    onEnter: () => sectionSeen('gallery'),
-  });
+  const ring = $('#orbitRing'), stage = $('#orbitStage'), src = $$('.orbit-card', ring);
+  if (!src.length) return;
+  const n = src.length;
+  let cards = [], R = 900, cw = 220, step = .3, total = 1;
+  const layout = () => {
+    const w = stage.clientWidth || innerWidth, h = stage.clientHeight || innerHeight * .5;
+    cw = Math.round(Math.max(130, Math.min(w < 640 ? w * .46 : w * .19, h * .62, 280)));
+    R = Math.max(380, Math.min(w * .68, 1000));
+    stage.style.perspective = Math.round(R * 1.15) + 'px';
+    step = (cw * 1.1) / R;
+    // repeat the photos until the curve is longer than what's visible, so it loops seamlessly
+    const copies = Math.ceil(Math.max(n, Math.ceil((Math.PI * 1.1) / step)) / n);
+    if (cards.length !== n * copies) {
+      ring.innerHTML = Array.from({ length: copies }, () => src.map((c) => c.outerHTML).join('')).join('');
+      cards = $$('.orbit-card', ring);
+    }
+    total = cards.length * step;
+    cards.forEach((c) => c.style.setProperty('--cw', cw + 'px'));
+  };
+  layout();
+  addEventListener('resize', layout);
+
+  const st = { off: 0, vel: 0, hover: false, visible: false };
+  const pxToRad = (px) => px / R;
   let down = false, lx = 0, moved = 0;
   stage.addEventListener('pointerdown', (e) => { down = true; lx = e.clientX; moved = 0; st.vel = 0; });
-  addEventListener('pointermove', (e) => { if (!down) return; const dx = e.clientX - lx; lx = e.clientX; moved += Math.abs(dx); st.drag += dx * 0.25; st.vel = dx * 0.25; });
+  addEventListener('pointermove', (e) => { if (!down) return; const dx = e.clientX - lx; lx = e.clientX; moved += Math.abs(dx); st.off -= pxToRad(dx); st.vel = -pxToRad(dx); });
   addEventListener('pointerup', () => { down = false; });
+  addEventListener('pointercancel', () => { down = false; });
+  stage.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') st.hover = true; });
+  stage.addEventListener('pointerleave', () => { st.hover = false; });
   stage.addEventListener('click', (e) => { const c = e.target.closest('.orbit-card'); if (c && moved < 6) openLightbox(+c.dataset.i); });
+
+  // entrance: the strip rises and opens up as the section scrolls in (no pin)
+  gsap.fromTo(stage, { opacity: 0, y: 90, scale: .9 }, { opacity: 1, y: 0, scale: 1, ease: 'none', scrollTrigger: { trigger: '#gallery', start: 'top 85%', end: 'top 25%', scrub: true } });
+  ScrollTrigger.create({ trigger: '#gallery', start: 'top 70%', onEnter: () => sectionSeen('gallery') });
+  new IntersectionObserver(([en]) => { st.visible = en.isIntersecting; }, { rootMargin: '100px' }).observe(stage);
+
   let lastIdx = -1;
+  const maxA = 1.25; // radians either side of centre that are drawn
   gsap.ticker.add(() => {
-    if (!down) { st.drag += st.vel; st.vel *= 0.94; }
-    if (!reduce) st.drift += 0.04;
-    const rot = -(st.scroll + st.drag + st.drift);
-    ring.style.transform = `translateZ(${-radius}px) rotateX(${st.tilt}deg) rotateY(${rot}deg)`;
-    const idx = ((Math.round(-rot / step) % n) + n) % n;
-    if (idx !== lastIdx) {
-      lastIdx = idx;
-      cards.forEach((c, i) => { c.style.filter = i === idx ? 'none' : 'brightness(.55) saturate(.7)'; });
-      const cap = $('#orbitCaption'); cap.textContent = S.orbitItems[idx]?.caption || ' ';
+    if (!st.visible) return;
+    if (!down) { st.off += st.vel; st.vel *= 0.93; if (Math.abs(st.vel) < 1e-5) st.vel = 0; }
+    if (!reduce && !down && !st.hover) st.off += pxToRad(0.55);
+    let best = 0, bestA = 9;
+    for (let k = 0; k < cards.length; k++) {
+      let a = (k * step - st.off) % total; if (a < -total / 2) a += total; if (a >= total / 2) a -= total;
+      const c = cards[k];
+      if (Math.abs(a) > maxA) { if (c.style.visibility !== 'hidden') c.style.visibility = 'hidden'; continue; }
+      if (c.style.visibility === 'hidden') c.style.visibility = '';
+      const x = R * Math.sin(a), z = R * (1 - Math.cos(a)) - 60;
+      c.style.transform = `translate3d(${x.toFixed(1)}px,0,${z.toFixed(1)}px) rotateY(${(-a).toFixed(4)}rad)`;
+      c.style.zIndex = String(1000 - Math.round(Math.abs(a) * 100));
+      if (Math.abs(a) < bestA) { bestA = Math.abs(a); best = +c.dataset.i; }
+    }
+    if (best !== lastIdx) {
+      lastIdx = best;
+      const cap = $('#orbitCaption'); cap.textContent = S.orbitItems[best]?.caption || ' ';
       gsap.fromTo(cap, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: .5 });
     }
   });
 }
 
 function openLightbox(i) {
-  const g = S.orbitItems[i]; if (!g) return;
-  openModal(`<img src="${esc(g.src)}" alt="${esc(g.caption || '')}" style="width:100%;border-radius:16px;max-height:70vh;object-fit:contain" /><p class="center" style="font-family:var(--script);font-size:2rem;color:var(--rose);margin:1rem 0 0">${esc(g.caption || '')}</p>`, true);
+  const list = S.orbitItems, n = list.length; if (!n) return;
+  i = ((i % n) + n) % n;
+  const g = list[i];
+  openModal(`<figure class="lb"><img src="${esc(g.src)}" alt="${esc(g.caption || '')}" />
+    ${n > 1 ? `<button class="lb-nav lb-prev" data-lb="${i - 1}" aria-label="Previous photo">‹</button><button class="lb-nav lb-next" data-lb="${i + 1}" aria-label="Next photo">›</button>` : ''}
+    <figcaption>${esc(g.caption || '')}</figcaption><p class="lb-count">${i + 1} / ${n}</p></figure>`, true);
+  $$('#modalBody [data-lb]').forEach((b) => b.addEventListener('click', () => openLightbox(+b.dataset.lb)));
+  const key = (e) => { if (e.key === 'ArrowRight') openLightbox(i + 1); if (e.key === 'ArrowLeft') openLightbox(i - 1); };
+  addEventListener('keydown', key);
+  let sx = null; const box = $('#modalBody .lb');
+  box.addEventListener('pointerdown', (e) => { sx = e.clientX; });
+  box.addEventListener('pointerup', (e) => { if (sx !== null && Math.abs(e.clientX - sx) > 50 && !e.target.closest('.lb-nav')) openLightbox(i + (e.clientX < sx ? 1 : -1)); sx = null; });
+  S.modalCleanup = () => removeEventListener('keydown', key);
 }
 
 // ---------------------------------------------------------------------------
@@ -760,7 +796,19 @@ function bad(form, name, msg) {
   const el = form.querySelector(`[name=${name}]`)?.closest('.field'); el?.classList.remove('is-bad'); void el?.offsetWidth; el?.classList.add('is-bad');
   toast(msg, true); return false;
 }
-function busy(btn, on) { if (!btn) return; btn.disabled = on; if (on) { btn.dataset.t = btn.innerHTML; btn.textContent = 'Just a moment…'; } else if (btn.dataset.t) btn.innerHTML = btn.dataset.t; }
+// Busy state: circling loader + label + bouncing bubbles, so people can see something is happening.
+function busy(btn, on, label = 'Just a moment') {
+  if (!btn) return;
+  btn.disabled = on; btn.setAttribute('aria-busy', on ? 'true' : 'false');
+  if (on) {
+    if (!btn.classList.contains('is-busy')) btn.dataset.t = btn.innerHTML;
+    btn.classList.add('is-busy');
+    btn.innerHTML = `<span class="spin" aria-hidden="true"></span><span class="busy-l">${esc(label)}</span><span class="bubbles" aria-hidden="true"><i></i><i></i><i></i></span>`;
+  } else {
+    btn.classList.remove('is-busy');
+    if (btn.dataset.t) btn.innerHTML = btn.dataset.t;
+  }
+}
 
 async function submitForm(kind, form, gift) {
   const fd = new FormData(form), v = (k) => String(fd.get(k) || '').trim();
@@ -771,7 +819,7 @@ async function submitForm(kind, form, gift) {
   if (!rateOk('form_' + kind, 8000)) return toast('Just sent! Give it a few seconds', false, 'heart');
   const base = { name: v('name').slice(0, 80), phone: phone || '', vid: S.vid, ref: makeRef('G'), at: serverTimestamp() };
   try {
-    busy(btn, true);
+    busy(btn, true, 'Sending');
     if (kind === 'offer') {
       await addDoc(collection(db, 'giftOffers'), { ...base, type: 'suggested', giftId: gift?.id || '', giftName: gift?.name || '', description: gift?.name || '', message: v('message').slice(0, 600), arrangement: v('arrangement'), status: 'OFFERED' });
       logActivity('gift_offer', `Gift offered: ${gift?.name}`);
@@ -866,7 +914,7 @@ function initGive() {
     if (rawPhone && !phone) return bad(form, 'phone', 'Please enter a valid phone number');
     const consent = !!fd.get('consent') && !!phone;
     if (!rateOk('pledge', 15000)) return toast('Just recorded! Give it a few seconds', false, 'heart');
-    const btn = form.querySelector('[type=submit]'); busy(btn, true);
+    const btn = form.querySelector('[type=submit]'); busy(btn, true, 'Saving your pledge');
     try {
       const name = String(fd.get('name') || '').trim().slice(0, 80);
       const ref = makeRef('PL');
@@ -899,7 +947,7 @@ const api = (path) => (/^https?:/.test(path) || /\.(web\.app|firebaseapp\.com)$/
 async function startPayment(p, btn) {
   const fin = S.settings.finance;
   if (fin.paystackEnabled) return paystackPayment(p, btn);
-  busy(btn, true);
+  busy(btn, true, `Sending ${money(p.amount)} request`);
   let res = null;
   if (fin.mpesaEnabled && fin.stkEndpoint) {
     try {
@@ -924,7 +972,7 @@ const loadPaystack = () => (paystackJs ??= new Promise((ok, fail) => {
   document.head.appendChild(s);
 }));
 async function paystackPayment(p, btn) {
-  busy(btn, true);
+  busy(btn, true, `Preparing ${money(p.amount)}`);
   let res = null;
   try {
     const [r] = await Promise.all([fetch(api('/api/paystackInit'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) }), loadPaystack().catch(() => null)]);
@@ -937,11 +985,20 @@ async function paystackPayment(p, btn) {
   let Pop = null; try { Pop = await loadPaystack(); } catch { Pop = null; }
   if (!Pop) { window.location.href = res.url; return; } // popup script blocked: use Paystack's hosted page
   awaitPayment(res.id, p, 'paystack');
-  new Pop().resumeTransaction(res.accessCode, {
-    onSuccess: () => verify(),
-    onCancel: () => { verify(); const box = $('#payBox .fine'); if (box) box.textContent = 'Checkout closed. If you completed the payment it will confirm shortly; otherwise nothing was charged.'; },
-    onError: () => toast('Payment window could not load. Please try again.', true),
-  });
+  // Paystack docs: resumeTransaction(accessCode). Callbacks aren't documented for it, so we don't rely on them:
+  // the server is polled (it asks Paystack itself) and the webhook confirms too.
+  let stopped = false, tries = 0;
+  const poll = async () => {
+    if (stopped || !$('#payBox')) return;
+    const out = await verify().then((r) => r?.json?.()).catch(() => null);
+    if (out?.outcome && out.outcome !== 'pending') return; // settled; the status listener shows the result
+    if (++tries < 120) setTimeout(poll, 5000);
+  };
+  const prev = S.modalCleanup; S.modalCleanup = () => { stopped = true; prev?.(); };
+  setTimeout(poll, 8000);
+  try {
+    new Pop().resumeTransaction(res.accessCode, { onSuccess: () => { tries = 0; verify(); } });
+  } catch { window.location.href = res.url; }
 }
 
 function awaitPayment(id, p, via = 'mpesa') {
@@ -1049,7 +1106,7 @@ function initWisdom() {
     if (message.length < 3) return bad(form, 'message', 'Please write a few words');
     if (!rateOk('wisdom', 20000)) return toast('Thank you! Please wait a moment before sharing again');
     const category = $('#wisdomCats .pill.is-on')?.dataset.cat || 'Personal messages';
-    const btn = form.querySelector('[type=submit]'); busy(btn, true);
+    const btn = form.querySelector('[type=submit]'); busy(btn, true, 'Sharing your words');
     try {
       const ref = makeRef('W');
       await addDoc(collection(db, 'wisdom'), { name: String(fd.get('name') || '').trim().slice(0, 80), message: message.slice(0, 1500), category, public: !!fd.get('public'), status: 'PENDING', vid: S.vid, ref, at: serverTimestamp() });
@@ -1213,7 +1270,7 @@ function initGuestbook() {
     if (!name) return bad(form, 'name', 'Please write your name');
     if (pad.isEmpty()) { toast('Please add your signature', true, 'pen'); return; }
     if (!rateOk('guest', 20000)) return toast('Thank you! Please wait a moment');
-    const btn = form.querySelector('[type=submit]'); busy(btn, true);
+    const btn = form.querySelector('[type=submit]'); busy(btn, true, 'Signing the guestbook');
     try {
       const ref = makeRef('GB');
       await addDoc(collection(db, 'guestbook'), { name: name.slice(0, 80), message: String(fd.get('message') || '').trim().slice(0, 500), signature: pad.toDataURL(500), public: !!fd.get('public'), status: 'PENDING', vid: S.vid, ref, at: serverTimestamp() });

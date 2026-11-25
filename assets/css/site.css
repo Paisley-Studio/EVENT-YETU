@@ -257,18 +257,29 @@ p { margin: 0 0 1em; }
 .ms--end { display: grid; place-items: center; width: min(70vw, 360px); border: 0; }
 .ms--end span { font-family: var(--script); font-size: clamp(3rem, 7vw, 5rem); color: var(--rich); }
 
-/* 3D orbit gallery */
-.orbit { position: relative; height: 100vh; height: 100svh; overflow: hidden; background: radial-gradient(ellipse at 50% 60%, #1a0408 0%, #000 65%); display: grid; grid-template-rows: auto 1fr auto; padding: max(80px, 12vh) 0 max(40px, 10vh); }
+/* Curved carousel gallery: cards on the inside of a curve, edges come closer */
+.orbit { position: relative; overflow: hidden; background: radial-gradient(ellipse at 50% 55%, #1a0408 0%, #000 70%); padding: max(80px, 12vh) 0 max(60px, 10vh); }
 .orbit-head { text-align: center; padding: 0 var(--gutter); position: relative; z-index: 3; }
 .orbit-head h3 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .hint { font-size: .75rem; letter-spacing: .2em; text-transform: uppercase; color: var(--ivory-50); margin-top: .8rem; }
-.orbit-stage { position: relative; z-index: 1; perspective: 1400px; perspective-origin: 50% 40%; cursor: grab; touch-action: pan-y; }
+.orbit-stage { position: relative; z-index: 1; height: clamp(280px, 52vh, 520px); margin: clamp(1.5rem, 5vh, 3rem) 0 1rem; perspective: 1200px; perspective-origin: 50% 50%; cursor: grab; touch-action: pan-y; user-select: none; -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
 .orbit-stage:active { cursor: grabbing; }
 .orbit-ring { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; }
-.orbit-card { position: absolute; width: var(--cw, 220px); height: calc(var(--cw, 220px) * 1.32); left: calc(var(--cw, 220px) / -2); top: calc(var(--cw, 220px) * -.66); border-radius: 6px; overflow: hidden; backface-visibility: visible; background: #111; box-shadow: 0 30px 60px rgba(0,0,0,.6); transition: filter .4s; border: 0; padding: 0; }
-.orbit-card img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-.orbit-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,.18), transparent 40%); pointer-events: none; }
+.orbit-card { position: absolute; width: var(--cw, 220px); height: calc(var(--cw, 220px) * 1.28); left: calc(var(--cw, 220px) / -2); top: calc(var(--cw, 220px) * -.64); border-radius: 8px; overflow: hidden; background: #111; box-shadow: 0 24px 50px rgba(0,0,0,.55); border: 0; padding: 0; cursor: zoom-in; will-change: transform; transition: box-shadow .3s, outline-color .3s; outline: 2px solid transparent; outline-offset: 3px; }
+.orbit-card:hover, .orbit-card:focus-visible { outline-color: var(--rose); box-shadow: 0 30px 70px rgba(0,0,0,.7); }
+.orbit-card img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; }
+.orbit-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,.16), transparent 40%); pointer-events: none; }
 .orbit-caption { text-align: center; font-family: var(--script); font-size: clamp(1.8rem, 4vw, 2.8rem); color: var(--rose); margin: 0; position: relative; z-index: 2; min-height: 1.4em; }
+
+/* Lightbox (full view) */
+.lb { position: relative; margin: 0; text-align: center; touch-action: pan-y; }
+.lb img { width: 100%; max-height: 72vh; object-fit: contain; border-radius: 14px; display: block; }
+.lb figcaption { font-family: var(--script); font-size: 2rem; color: var(--rose); margin: 1rem 0 0; min-height: 1em; }
+.lb-count { margin: .3rem 0 0; font-size: .75rem; letter-spacing: .2em; color: var(--ivory-50); }
+.lb-nav { position: absolute; top: 36vh; transform: translateY(-50%); width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--ivory-15); background: rgba(0,0,0,.55); color: var(--ivory); font-size: 1.8rem; line-height: 1; cursor: pointer; backdrop-filter: blur(6px); transition: background .3s, transform .3s; }
+.lb-nav:hover { background: var(--burgundy); }
+.lb-prev { left: 10px; }
+.lb-next { right: 10px; }
 
 /* ==========================================================================
    OCCASION
@@ -786,3 +797,16 @@ p { margin: 0 0 1em; }
   .kp-phones a { padding: .65rem .5rem; }
 }
 @media (max-width: 340px) { .kp-credit { font-size: .55rem; letter-spacing: .04em; } }
+
+/* Busy buttons: circling loader + label + bouncing bubbles + shimmer, so guests see something is happening */
+.btn.is-busy, .btn.is-busy:disabled { opacity: 1; cursor: progress; pointer-events: none; overflow: hidden; }
+.btn.is-busy::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 20%, rgba(255,255,255,.22) 50%, transparent 80%); transform: translateX(-100%); animation: btnShine 1.4s ease-in-out infinite; pointer-events: none; }
+.btn .spin { width: 1.05em; height: 1.05em; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: btnSpin .7s linear infinite; flex: none; }
+.btn .bubbles { display: inline-flex; gap: .22em; align-items: flex-end; height: 1em; }
+.btn .bubbles i { width: .38em; height: .38em; border-radius: 50%; background: currentColor; animation: btnBubble 1s ease-in-out infinite; }
+.btn .bubbles i:nth-child(2) { animation-delay: .15s; }
+.btn .bubbles i:nth-child(3) { animation-delay: .3s; }
+@keyframes btnSpin { to { transform: rotate(360deg); } }
+@keyframes btnBubble { 0%, 80%, 100% { transform: translateY(0) scale(.7); opacity: .45; } 40% { transform: translateY(-.45em) scale(1); opacity: 1; } }
+@keyframes btnShine { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .btn .spin { animation-duration: 1.6s; } .btn .bubbles i, .btn.is-busy::after { animation: none; } }

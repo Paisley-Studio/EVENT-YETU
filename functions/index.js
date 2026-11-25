@@ -62,6 +62,16 @@ async function darajaToken() {
 function password(stamp) { return Buffer.from(`${MPESA_SHORTCODE.value()}${MPESA_PASSKEY.value()}${stamp}`).toString('base64'); }
 
 // Shared abuse limits for anything that starts a payment. Returns an error message, or null when allowed.
+// Site-wide flood guard only (protects against bots, never blocks a normal guest retrying).
+async function floodOk(maxPerMinute) {
+  return db.runTransaction(async (t) => {
+    const g = db.doc('ratelimits/_paystack'); const s = await t.get(g); const now = Date.now();
+    const hits = ((s.exists && s.data().hits) || []).filter((x) => now - x < 60 * 1000);
+    if (hits.length >= maxPerMinute) return false;
+    t.set(g, { hits: [...hits, now] }); return true;
+  });
+}
+
 async function rateLimit(req, phone) {
   // one request per phone per 60s, max 5 per IP per 10 min
   const since = admin.firestore.Timestamp.fromMillis(Date.now() - 60 * 1000);
@@ -286,8 +296,9 @@ exports.paystackInit = onRequest({ cors: ALLOWED_ORIGINS }, async (req, res) => 
     // Paystack is used whenever keys are saved, unless the owner explicitly switched it off. Otherwise tell the site to use M-Pesa.
     if ((settings.finance && settings.finance.paystackEnabled === false) || !(await paystackKey())) return res.status(503).json({ error: 'Paystack is not set up.', fallback: true });
 
-    const limited = await rateLimit(req, phone);
-    if (limited) return res.status(429).json({ error: limited });
+    // No per-number or per-device limits for Paystack: nothing reaches anyone's phone until the guest confirms
+    // inside Paystack's own window, so people can retry as often as they need. Only a site-wide flood guard remains.
+    if (!(await floodOk(120))) return res.status(429).json({ error: 'Payments are busy right now. Please try again in a moment.' });
 
     const docRef = db.collection('contributions').doc();
     const cleanRef = String(ref).replace(/[^A-Z0-9-]/gi, '').slice(0, 20) || `TNC-${docRef.id.slice(0, 6).toUpperCase()}`;

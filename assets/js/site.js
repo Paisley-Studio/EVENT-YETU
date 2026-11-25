@@ -894,7 +894,7 @@ function initGive() {
     if (amount > 250000) return bad(form, 'amount', 'M-Pesa allows up to KES 250,000 per transaction');
     const phone = normalizePhone(fd.get('phone'));
     if (!phone) return bad(form, 'phone', 'Please enter a valid M-Pesa number, e.g. 0712 345 678');
-    if (!rateOk('stk', 20000)) return toast('Please wait a few seconds before trying again');
+    if (!rateOk('stk', 4000)) return toast('Please wait a few seconds before trying again');
     const email = String(fd.get('email') || '').trim();
     if (email && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) return bad(form, 'email', 'Please enter a valid email, or leave it empty');
     const payload = { amount, phone, email, name: String(fd.get('name') || '').trim().slice(0, 80), anonymous: !!fd.get('anonymous'), vid: S.vid, ref: makeRef('TNC') };

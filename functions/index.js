@@ -300,12 +300,13 @@ exports.paystackInit = onRequest({ cors: ALLOWED_ORIGINS }, async (req, res) => 
     await db.doc(`contributionStatus/${docRef.id}`).set({ status: 'PENDING', amount, ref: cleanRef, at: FieldValue.serverTimestamp() });
 
     // Paystack requires an email; when the guest gives none we use a per-payment placeholder on our own domain.
-    const host = (PUBLIC_BASE_URL.value() || `https://${req.headers.host}`).replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    // Paystack rejects some placeholder addresses (e.g. on web.app), so use a plain one on our own domain.
+    const placeholder = `guest${docRef.id.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)}@event-yetu.online`;
     const { ok, out } = await paystack('/transaction/initialize', {
       method: 'POST',
       body: JSON.stringify({
         // per Paystack docs: amount is a string in the subunit (KES cents), metadata is stringified JSON
-        email: email || `${paystackRef.toLowerCase()}@${host}`, amount: String(amount * 100), currency: 'KES', reference: paystackRef,
+        email: email || placeholder, amount: String(amount * 100), currency: 'KES', reference: paystackRef,
         metadata: JSON.stringify({ contributionId: docRef.id, ref: cleanRef, phone, custom_fields: [{ display_name: 'Reference', variable_name: 'ref', value: cleanRef }] }),
       }),
     });

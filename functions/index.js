@@ -283,8 +283,8 @@ exports.paystackInit = onRequest({ cors: ALLOWED_ORIGINS }, async (req, res) => 
     if (email && !/^[^\s@<>]{1,64}@[^\s@<>]{1,190}\.[a-z]{2,}$/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address, or leave it empty.' });
 
     const settings = (await db.doc('settings/site').get()).data() || {};
-    if (!settings.finance || settings.finance.paystackEnabled !== true) return res.status(503).json({ error: 'Online payments are paused right now.' });
-    if (!(await paystackKey())) return res.status(503).json({ error: 'Online payments are not set up yet.' });
+    // Paystack is used whenever keys are saved, unless the owner explicitly switched it off. Otherwise tell the site to use M-Pesa.
+    if ((settings.finance && settings.finance.paystackEnabled === false) || !(await paystackKey())) return res.status(503).json({ error: 'Paystack is not set up.', fallback: true });
 
     const limited = await rateLimit(req, phone);
     if (limited) return res.status(429).json({ error: limited });

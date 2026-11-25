@@ -845,7 +845,7 @@ VIEWS.content = () => {
       ${inp('finance.stkEndpoint', 'STK Push endpoint', 'placeholder="/api/stkPush"')}<p class="muted small">Daraja credentials live only on the server (Cloud Function secrets), never here. See README.</p>
       <p class="section-title">Manual payment fallback</p><p class="muted small">Shown when the STK prompt is unavailable. Such payments stay <b>PENDING</b> until you verify them.</p>
       <div class="row">${inp('finance.paybill', 'Paybill number')}${inp('finance.account', 'Account name')}${inp('finance.till', 'Or Till number')}</div>
-      <p class="section-title">Paystack</p><label class="tog"><input type="checkbox" data-path="finance.paystackEnabled" ${S.finance.paystackEnabled ? 'checked' : ''} /> Use Paystack checkout for "Contribute now" (card &amp; M-Pesa via Paystack), instead of the STK prompt</label>
+      <p class="section-title">Paystack</p><label class="tog"><input type="checkbox" data-path="finance.paystackEnabled" ${S.finance.paystackEnabled !== false ? 'checked' : ''} /> Use Paystack checkout for "Contribute now" when keys are saved (untick to force the M-Pesa STK prompt)</label>
       <p class="muted small">Enter the keys in the Paystack keys card below. Click <b>Save changes</b> after you change this switch.</p>${save}</div>
     <div class="card" style="margin-top:16px" id="psCard"><div class="card-h"><div><h3>Paystack keys</h3>
         <p class="muted small">Paystack Dashboard → Settings → API Keys &amp; Webhooks. After you save, the secret key is stored where <b>no browser can read it back</b>, not even this dashboard. Only the payment server uses it. To change it, paste a new one.</p></div>
@@ -856,7 +856,7 @@ VIEWS.content = () => {
         <div class="toolbar"><button class="b b--primary" data-act="savePaystack">Save keys</button><button class="b b--bad b--ghost" data-act="rmPaystack" id="psRm" hidden>Remove keys</button></div>`
         : '<p class="muted small">Only the owner can set or change payment keys.</p>'}
       <p class="section-title">Webhook URL</p><p class="muted small">In Paystack, under API Keys &amp; Webhooks, paste this as the <b>Webhook URL</b> so payments are confirmed even if the guest closes the page:</p>
-      <p class="mono small" style="user-select:all;word-break:break-all">${esc(location.origin)}/api/paystackWebhook</p></div>`;
+      <p class="mono small" style="user-select:all;word-break:break-all">https://mesh-9b2f3.web.app/api/paystackWebhook</p><p class="muted small">Use exactly this address. Your custom domain is not hosted on Firebase, so <span class="mono">/api/…</span> addresses on it don't reach the payment server.</p></div>`;
   } else if (st.cur === 'texts') {
     html = `<div class="card"><p class="section-title">Five-minute agreement</p>${inp('texts.agreementTitle', 'Title')}${area('texts.agreementBody', 'Body', 2)}${inp('texts.agreementLabel', 'Agreement checkbox label')}
       <p class="section-title">Sections</p>${area('texts.participateIntro', 'Participation intro', 2)}${area('texts.impactIntro', 'Collective impact intro', 2)}${area('texts.guestbookIntro', 'Guestbook intro', 2)}${area('texts.finale', 'Closing credits line', 2)}${save}</div>`;

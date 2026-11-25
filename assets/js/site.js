@@ -877,7 +877,7 @@ function initGive() {
     $$('.panel').forEach((p) => p.classList.toggle('is-on', p.dataset.panel === t.dataset.tab));
   });
   $('#formLater [name=date]').min = tomorrow();
-  if (S.settings.finance.paystackEnabled) {
+  if (S.settings.finance.paystackEnabled !== false) {
     $('#phoneLbl').textContent = 'Phone number';
     $('#emailField').hidden = false;
     const f = $('#formNow');
@@ -946,7 +946,12 @@ const api = (path) => (/^https?:/.test(path) || /\.(web\.app|firebaseapp\.com)$/
 
 async function startPayment(p, btn) {
   const fin = S.settings.finance;
-  if (fin.paystackEnabled) return paystackPayment(p, btn);
+  if (fin.paystackEnabled !== false) return paystackPayment(p, btn);
+  return stkPayment(p, btn);
+}
+
+async function stkPayment(p, btn) {
+  const fin = S.settings.finance;
   busy(btn, true, `Sending ${money(p.amount)} request`);
   let res = null;
   if (fin.mpesaEnabled && fin.stkEndpoint) {
@@ -977,6 +982,7 @@ async function paystackPayment(p, btn) {
   try {
     const [r] = await Promise.all([fetch(api('/api/paystackInit'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) }), loadPaystack().catch(() => null)]);
     res = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
+    if (res?.fallback) { busy(btn, false); return stkPayment(p, btn); } // no Paystack keys saved: use the M-Pesa prompt
     if (!r.ok) { busy(btn, false); if (res?.error) return toast(res.error, true); return manualPayment(p); }
   } catch { busy(btn, false); return manualPayment(p); }
   busy(btn, false);

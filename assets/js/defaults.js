@@ -59,7 +59,7 @@ export const DEFAULT_SETTINGS = {
     presets: [500, 1000, 2000, 5000, 10000],
     mpesaEnabled: true,
     stkEndpoint: '/api/stkPush',     // Cloud Function (via Hosting rewrite)
-    paystackEnabled: false,          // when on, "Contribute now" opens Paystack checkout instead of the STK prompt
+    paystackEnabled: true,           // Paystack is used whenever keys are saved in the admin; set false to force the STK prompt
     paybill: '',                     // optional manual-payment fallback
     account: 'TNC',
     till: '',
